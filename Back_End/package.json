@@ -1,0 +1,53 @@
+{
+  "dependencies": {
+    "@upstash/redis": "^1.35.8",
+    "axios": "^1.13.1",
+    "connect-redis": "^9.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.45.0",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.2.1",
+    "express-session": "^1.18.2",
+    "fastify": "^5.6.1",
+    "ioredis": "^5.8.2",
+    "nodejs": "^0.0.0",
+    "nodemon": "^3.1.10",
+    "openid-client": "5",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "pg": "^8.16.3",
+    "postgres": "^3.4.7",
+    "redis": "^5.10.0",
+    "resend": "^6.6.0",
+    "tsc": "^2.0.4",
+    "typeorm": "^0.3.27",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@types/express-session": "^1.18.2",
+    "@types/node": "^24.10.1",
+    "@types/passport": "^1.0.17",
+    "@types/pg": "^8.15.6",
+    "drizzle-kit": "^0.31.8",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "name": "back-end",
+  "version": "1.0.0",
+  "description": "",
+  "main": "./src/server.ts",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "node dist/server.js",
+    "build": "npx tsc",
+    "dev:watch": "nodemon dist/server.js",
+    "db:generate": "npx drizzle-kit generate",
+    "db:migrate": "npx tsx src/drizzle/migrate.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

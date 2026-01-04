@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+      "target": "es2022",
+      "module": "nodenext",
+      "outDir": "./dist",
+      "rootDir": "./src",
+      "strict": false,
+      "esModuleInterop": true,
+      "skipLibCheck": true,
+      "forceConsistentCasingInFileNames": true,
+      "moduleResolution": "nodenext",
+    }
+    , "exclude": [
+      "drizzle.config.ts"
+    ]
+    
+}

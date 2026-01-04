@@ -1,0 +1,10 @@
+import { Router } from "express";
+import { Google_Start, googleCallback, me, logout } from "../controllers/auth.controller.js";
+import { Send_Verification_Code, Verify_Code_And_Login } from '../controllers/Email_Verification_Controller.js';
+export const Auth_Router = Router();
+Auth_Router.get("/google/start", Google_Start);
+Auth_Router.get("/google/callback", googleCallback);
+Auth_Router.post('/email/send-code', Send_Verification_Code);
+Auth_Router.post('/email/verify', Verify_Code_And_Login);
+Auth_Router.get("/me", me);
+Auth_Router.post("/logout", logout);
