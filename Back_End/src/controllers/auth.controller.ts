@@ -1,118 +1,145 @@
-import { Request , Response } from "express";
-import { generators } from "openid-client";
-import { Db_User } from "../drizzle/schema.js";
-import { Login_With_Provider_Profile } from "../services/Auth_Service.js";
-import { getGoogleClient } from "../config/oidc_Client.js";
-import { Google_Claims_DTO, Google_Claims_Schema, Google_Claims_To_Provider_Profile } from "../schemas/Google_Schema.js";
 
+// src/controllers/auth.controller.ts
+import { Request, Response, NextFunction } from "express";
+import { authService } from "../services/Security/Auth_Registration_Service.js";
+import { z } from "zod";
 
-export function passport_Login(req: Request , user: Db_User):Promise<void> {
-    return new Promise((resolve , reject) => {
-        req.login(user , (err) => (err ? reject(err): resolve()));
-    })
+// Validation schemas
+const registerSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number"),
+  phoneNumber: z
+    .string()
+    .regex(/^\+?[1-9]\d{1,14}$/, "Invalid phone number format"),
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format"),
+  name: z.string().min(1, "Name is required").max(255, "Name is too long"),
+  picture: z.string().url("Invalid picture URL").optional(),
+});
+
+const loginSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
+});
+
+const verifyEmailSchema = z.object({
+  userId: z.string().uuid("Invalid user ID"),
+  otp: z.string().length(6, "OTP must be 6 digits").regex(/^\d{6}$/, "OTP must be numeric"),
+});
+
+const resendOtpSchema = z.object({
+  userId: z.string().uuid("Invalid user ID"),
+});
+
+export class AuthController {
+  async register(req: Request, res: Response, next: NextFunction) {
+    try {
+      const validatedData = registerSchema.parse(req.body);
+
+      const result = await authService.register(validatedData);
+
+      res.status(201).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async login(req: Request, res: Response, next: NextFunction) {
+    try {
+      const validatedData = loginSchema.parse(req.body);
+
+      const result = await authService.login(validatedData);
+
+      // TODO: Set JWT token in httpOnly cookie
+      // res.cookie('token', result.token, {
+      //   httpOnly: true,
+      //   secure: process.env.NODE_ENV === 'production',
+      //   sameSite: 'strict',
+      //   maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      // });
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async verifyEmail(req: Request, res: Response, next: NextFunction) {
+    try {
+      const validatedData = verifyEmailSchema.parse(req.body);
+
+      const result = await authService.verifyEmail(validatedData);
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async resendVerificationOtp(req: Request, res: Response, next: NextFunction) {
+    try {
+      const validatedData = resendOtpSchema.parse(req.body);
+
+      const result = await authService.resendVerificationOtp(validatedData.userId);
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getProfile(req: Request, res: Response, next: NextFunction) {
+    try {
+      // TODO: Get user ID from authenticated session/JWT
+      const userId = req.params.userId;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: "Unauthorized",
+        });
+      }
+
+      const result = await authService.getUserProfile(userId);
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async logout(req: Request, res: Response, next: NextFunction) {
+    try {
+      // TODO: Clear JWT cookie and invalidate session
+      // res.clearCookie('token');
+
+      res.status(200).json({
+        success: true,
+        message: "Logged out successfully",
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
-export async function Google_Start(req: Request, res: Response) {
-    const client = await getGoogleClient();
-  
-    const codeVerifier = generators.codeVerifier();
-    const codeChallenge = generators.codeChallenge(codeVerifier);
-    const state = generators.state();
-  
-    req.session.pkceVerifier = codeVerifier;
-    req.session.oauthState = state;
-  
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI;
-    if (!redirectUri) {
-      return res.status(500).json({ success: false, message: "GOOGLE_REDIRECT_URI is missing" });
-    }
-  
-    const url = client.authorizationUrl({
-      scope: "openid email profile",
-      redirect_uri: redirectUri,            
-      code_challenge: codeChallenge,
-      code_challenge_method: "S256",
-      state,
-    });
-
-    req.session.save((err) => {
-      if (err) {
-        console.error("Session save failed in Google_Start:", err);
-        return res.status(500).json({ success: false, message: "Failed to save session" });
-      }
-      return res.redirect(url);
-    });
-  }
-
-
-  
-export async function googleCallback(req: Request, res: Response) {
-    const client = await getGoogleClient();
-  
-    const codeVerifier = req.session.pkceVerifier;
-    const expectedState = req.session.oauthState;
-  
-    if (!codeVerifier || !expectedState) {
-      return res.status(400).json({ success: false, message: "Missing PKCE/state in session" });
-    }
-  
-    const params = client.callbackParams(req);
-  
-    const tokenSet = await client.callback(
-      process.env.GOOGLE_REDIRECT_URI!,
-      params,
-      { code_verifier: codeVerifier, state: expectedState }
-    );
-  
-    const rawClaims = tokenSet.claims(); // unknown-ish shape
-    const parsed = Google_Claims_Schema.safeParse(rawClaims);
-  
-    if (!parsed.success) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid ID token claims",
-        details: parsed.error.flatten(),
-      });
-    }
-  
-    const claims: Google_Claims_DTO = parsed.data;
-  
-    const profile = Google_Claims_To_Provider_Profile(claims);
-
-    const user = await Login_With_Provider_Profile(profile);
-  
-    await passport_Login(req, user);
-  
-    delete req.session.pkceVerifier;
-    delete req.session.oauthState;
-    
-    
-    req.session.save((err) => {
-      if (err) {
-        console.error("Session save failed in googleCallback:", err);
-        return res.status(500).json({ success: false, message: "Failed to save session" });
-      }
-      return res.redirect(process.env.FRONTEND_URL!);
-    });
-    
-  }
-  
-  export function me(req: Request, res: Response) {
-    if (!req.isAuthenticated?.() || !req.user) {
-      return res.status(401).json({ success: false, message: "Not authenticated" });
-    }
-  
-    // req.user is typed as DbUser via Express.User augmentation
-    return res.redirect(process.env.FRONTEND_URL!)
-  }
-  
-  export function logout(req: Request, res: Response) {
-    req.logout((err) => {
-      if (err) return res.status(500).json({ success: false, message: "Logout failed" });
-  
-      req.session.destroy(() => {
-        res.clearCookie("sid");
-        res.json({ success: true });
-      });
-    });
-  }
+export const authController = new AuthController();

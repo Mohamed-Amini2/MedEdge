@@ -12,23 +12,16 @@ export function Create_App() {
 
   app.use(cors(Cors_Confige));
 
-
   app.use(cors({
     origin: process.env.FRONTEND_URL,
     credentials: true,
   }));
 
   app.use(express.json());
-
   app.use(SessionMiddleware);
-
-  //* passport after session
   app.use(passport.initialize());
   app.use(passport.session());
-
   app.use("/api", Api_Router);
-
-  //* error handler last Well a todo thing 
 
   return app;
 }

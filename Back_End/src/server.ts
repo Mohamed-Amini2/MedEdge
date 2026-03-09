@@ -1,12 +1,12 @@
 import * as dotenv from 'dotenv'
 import { verifyDatabaseConnection } from './config/dbCon_Verfication.js';
 import { Create_App } from "./app.js";import cors from 'cors'
-import { init_Passport } from './config/Passport.config.js';
+// import { init_Passport } from './config/Passport.config.js';
 import { Connect_Redis } from './redis/redis.js';
 
 
 await Connect_Redis();
-init_Passport();
+// init_Passport();
 
 dotenv.config();
 

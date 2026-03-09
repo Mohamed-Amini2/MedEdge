@@ -1,5 +1,21 @@
-node_modules
-/migrations
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build output
+dist/
+build/
+**/dist/
+
+# Environment variables
 .env
-/dist
-/build
+**/.env
+.env.local
+.env.production
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
