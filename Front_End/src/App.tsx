@@ -6,6 +6,9 @@ import Register_Page from "./pages/auth/signup";
 import Appointments_Client from "./pages/Client_Dashboard/Appointments_Client";
 import Layout from "./components/Sections/Dashboard/Layout";
 import Dashboard_Client from "./pages/Client_Dashboard/Dashboard_Client";
+import Chat_Client from "./pages/Client_Dashboard/Chat_Client"
+import Record_Client from "./pages/Client_Dashboard/Record_Client";
+import Settings_Client from "./pages/Client_Dashboard/Settings_Client";
 
 function App() {
   return (
@@ -26,6 +29,9 @@ function App() {
         <Route path="/dashboard" element={<Layout />}>
           <Route index element={<Dashboard_Client />} />
           <Route path="appointments" element={<Appointments_Client />} />
+          <Route path="messages" element={<Chat_Client />}/>
+          <Route path="records" element={<Record_Client />} />
+          <Route path="settings" element={<Settings_Client />} />
         </Route>
         
       </Routes>

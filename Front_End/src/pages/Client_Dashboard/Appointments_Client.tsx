@@ -339,7 +339,6 @@ const BookingModal = ({
   className="bg-white border border-[#D6CCC2] rounded-2xl p-0 overflow-hidden"
 >
 
-        {/* Header — hidden on success screen */}
         {!confirmed && (
           <DialogHeader className="px-10 pt-7 pb-5 border-b border-[#EDE6DE]">
             <div className="flex items-center gap-3 mb-1">
@@ -356,14 +355,8 @@ const BookingModal = ({
             <StepIndicator current={step} />
           </DialogHeader>
         )}
-
-        {/* Body */}
         <div className={`px-10 overflow-y-auto ${confirmed ? 'py-10 flex flex-col items-center max-h-[80vh]' : 'py-7 max-h-[60vh]'}`}>
-
-          {/* ── Success screen ── */}
           {confirmed && <SuccessScreen booking={booking} onClose={handleClose} />}
-
-          {/* ── Step 1: Specialty ── */}
           {!confirmed && step === 1 && (
             <div>
               <p className="text-sm font-semibold text-[#1A0F0A] mb-1">Select a specialty</p>
