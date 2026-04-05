@@ -25,7 +25,7 @@ import {
 } from 'lucide-react'
 
 // ── Types ────────────────────────────────────────────────────
-interface Record {
+interface MedicalRecord {
   id: number
   title: string
   type: 'Lab Report' | 'Imaging' | 'Prescription' | 'Consultation' | 'Checkup' | 'Certificate' | 'Vaccination'
@@ -40,7 +40,7 @@ interface Record {
 }
 
 // ── Data ─────────────────────────────────────────────────────
-const RECORDS: Record[] = [
+const RECORDS: MedicalRecord[] = [
   {
     id: 1,
     title: 'Annual Physical Examination',
@@ -140,7 +140,7 @@ const RECORDS: Record[] = [
   },
 ]
 
-const TYPE_CONFIG: Record<Record['type'], { icon: React.ComponentType<{ className?: string }>; color: string; bg: string }> = {
+const TYPE_CONFIG: Record<MedicalRecord['type'], { icon: React.ComponentType<{ className?: string }>; color: string; bg: string }> = {
   'Lab Report':   { icon: FlaskConical,  color: 'text-secondary',    bg: 'bg-secondary/10'  },
   'Imaging':      { icon: Camera,        color: 'text-accent-teal',   bg: 'bg-accent-teal/10'},
   'Prescription': { icon: Pill,          color: 'text-primary',       bg: 'bg-primary/10'    },
@@ -160,7 +160,7 @@ const STATS = [
 ]
 
 // ── Detail drawer ────────────────────────────────────────────
-const RecordDrawer = ({ record, onClose }: { record: Record; onClose: () => void }) => {
+const RecordDrawer = ({ record, onClose }: { record: MedicalRecord; onClose: () => void }) => {
   const cfg = TYPE_CONFIG[record.type]
   const Icon = cfg.icon
 
@@ -273,7 +273,7 @@ const RecordDrawer = ({ record, onClose }: { record: Record; onClose: () => void
 }
 
 // ── Record card ──────────────────────────────────────────────
-const RecordCard = ({ record, onClick }: { record: Record; onClick: () => void }) => {
+const RecordCard = ({ record, onClick }: { record: MedicalRecord; onClick: () => void }) => {
   const cfg = TYPE_CONFIG[record.type]
   const Icon = cfg.icon
 
@@ -348,7 +348,7 @@ const RecordCard = ({ record, onClick }: { record: Record; onClick: () => void }
 export const MedicalRecords = () => {
   const [search,        setSearch       ] = useState('')
   const [activeFilter,  setActiveFilter  ] = useState('All Records')
-  const [activeRecord,  setActiveRecord  ] = useState<Record | null>(null)
+  const [activeRecord,  setActiveRecord  ] = useState<MedicalRecord | null>(null)
   const [view,          setView          ] = useState<'grid' | 'list'>('grid')
 
   const filtered = RECORDS.filter((r) => {

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   FileText, Activity, Search, Download,
-  Share2, Eye, Calendar, User, ChevronRight, X, Clock, CheckCircle,
+  Share2, Eye, Calendar, User, X,
   FlaskConical, Camera, Pill, Stethoscope, ShieldCheck, Plus,
   LayoutGrid, List, SortAsc,
 } from 'lucide-react'
@@ -51,116 +51,12 @@ const STATS = [
   { label: 'This Month', value: '4', icon: Calendar, color: '#7C3AED' },
 ]
 
-const RecordDrawer = ({ record, onClose }: { record: Record; onClose: () => void }) => {
+const RecordCard = ({ record }: { record: Record }) => {
   const cfg = TYPE_CONFIG[record.type]
   const Icon = cfg.icon
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-black/20 backdrop-blur-sm animate-fadeIn" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-white h-full overflow-y-auto shadow-2xl animate-slideLeft">
-        <div className="sticky top-0 bg-white border-b border-[#EDE6DE] px-6 py-5 flex items-center justify-between z-10">
-          <h3 className="text-lg font-semibold text-[#1A0F0A]">Record Details</h3>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-[#F5F0EB] transition-colors">
-            <X className="w-5 h-5 text-[#5C4A3E]" />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-6">
-          <div>
-            <div
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium mb-3"
-              style={{ backgroundColor: cfg.bg, color: cfg.color }}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {record.type}
-            </div>
-            <h2 className="text-xl font-semibold text-[#1A0F0A] leading-snug mb-2">{record.title}</h2>
-            {record.isNew && (
-              <span className="text-[9px] px-2 py-0.5 rounded-full font-bold bg-blue-100 text-blue-600">NEW</span>
-            )}
-          </div>
-
-          <div className="bg-[#FDFCFA] rounded-xl border border-[#EDE6DE] p-4">
-            <p className="text-xs text-[#A89080] uppercase tracking-wider mb-2">Summary</p>
-            <p className="text-sm text-[#1A0F0A] leading-relaxed">{record.summary}</p>
-          </div>
-
-          <div className="space-y-3">
-            {[
-              { icon: User, label: 'Doctor', value: record.doctor },
-              { icon: Activity, label: 'Department', value: record.department },
-              { icon: Calendar, label: 'Date', value: new Date(record.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) },
-              { icon: FileText, label: 'File Size', value: record.size },
-            ].map((row) => (
-              <div key={row.label} className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-[#F5F0EB] flex items-center justify-center">
-                  <row.icon className="w-4 h-4 text-[#8A7568]" />
-                </div>
-                <div>
-                  <p className="text-[10px] text-[#A89080] uppercase">{row.label}</p>
-                  <p className="text-sm text-[#1A0F0A]">{row.value}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div>
-            <p className="text-xs text-[#A89080] uppercase tracking-wider mb-2">Tags</p>
-            <div className="flex flex-wrap gap-2">
-              {record.tags.map((tag) => (
-                <span key={tag} className="px-2.5 py-1 rounded-full text-xs border border-[#EDE6DE] text-[#5C4A3E]">
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {record.status === 'Available' ? (
-              <CheckCircle className="w-4 h-4 text-green-500" />
-            ) : (
-              <Clock className="w-4 h-4 text-amber-500" />
-            )}
-            <span className={`text-sm font-medium ${record.status === 'Available' ? 'text-green-600' : 'text-amber-600'}`}>
-              {record.status}
-            </span>
-          </div>
-
-          <div className="pt-4 border-t border-[#EDE6DE] space-y-2">
-            <button
-              className="w-full py-3 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-all flex items-center justify-center gap-2"
-              style={{ backgroundColor: TERRA }}
-            >
-              <Eye className="w-4 h-4" />
-              View Document
-            </button>
-            <div className="grid grid-cols-2 gap-2">
-              <button className="py-2.5 rounded-xl border border-[#D6CCC2] text-sm text-[#5C4A3E] hover:bg-[#F5F0EB] transition-all flex items-center justify-center gap-2">
-                <Download className="w-4 h-4" />
-                Download
-              </button>
-              <button className="py-2.5 rounded-xl border border-[#D6CCC2] text-sm text-[#5C4A3E] hover:bg-[#F5F0EB] transition-all flex items-center justify-center gap-2">
-                <Share2 className="w-4 h-4" />
-                Share
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-const RecordCard = ({ record, onClick }: { record: Record; onClick: () => void }) => {
-  const cfg = TYPE_CONFIG[record.type]
-  const Icon = cfg.icon
-
-  return (
-    <div
-      className="bg-white rounded-xl border border-[#D6CCC2] p-5 hover:shadow-md hover:border-[#C4A99A] transition-all cursor-pointer group"
-      onClick={onClick}
-    >
+    <div className="bg-white rounded-xl border border-[#D6CCC2] p-5 hover:shadow-md hover:border-[#C4A99A] transition-all">
       <div className="flex items-start gap-4">
         <div
           className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -208,7 +104,15 @@ const RecordCard = ({ record, onClick }: { record: Record; onClick: () => void }
           </div>
         </div>
 
-        <ChevronRight className="w-4 h-4 text-[#C4B8B0] group-hover:text-[#A33A10] group-hover:translate-x-0.5 transition-all flex-shrink-0 mt-1" />
+        {/* Action buttons */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button className="p-2 rounded-lg hover:bg-[#F5F0EB] transition-colors">
+            <Eye className="w-4 h-4 text-[#8A7568]" />
+          </button>
+          <button className="p-2 rounded-lg hover:bg-[#F5F0EB] transition-colors">
+            <Download className="w-4 h-4 text-[#8A7568]" />
+          </button>
+        </div>
       </div>
 
       {record.tags.length > 0 && (
@@ -227,7 +131,6 @@ const RecordCard = ({ record, onClick }: { record: Record; onClick: () => void }
 const Records_Client = () => {
   const [search, setSearch] = useState('')
   const [activeFilter, setActiveFilter] = useState('All Records')
-  const [activeRecord, setActiveRecord] = useState<Record | null>(null)
   const [view, setView] = useState<'grid' | 'list'>('grid')
 
   const filtered = RECORDS.filter((r) => {
@@ -238,8 +141,6 @@ const Records_Client = () => {
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      {activeRecord && <RecordDrawer record={activeRecord} onClose={() => setActiveRecord(null)} />}
-
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -364,7 +265,7 @@ const Records_Client = () => {
       ) : view === 'grid' ? (
         <div className="grid md:grid-cols-2 gap-4">
           {filtered.map((r) => (
-            <RecordCard key={r.id} record={r} onClick={() => setActiveRecord(r)} />
+            <RecordCard key={r.id} record={r} />
           ))}
         </div>
       ) : (
@@ -385,7 +286,7 @@ const Records_Client = () => {
                 const cfg = TYPE_CONFIG[record.type]
                 const Icon = cfg.icon
                 return (
-                  <tr key={record.id} className="hover:bg-[#FDFCFA] transition-colors cursor-pointer" onClick={() => setActiveRecord(record)}>
+                  <tr key={record.id} className="hover:bg-[#FDFCFA] transition-colors">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
                         <div
@@ -431,17 +332,14 @@ const Records_Client = () => {
                     </td>
                     <td className="px-5 py-4 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={(e) => e.stopPropagation()}
-                          className="p-2 rounded-lg hover:bg-[#F5F0EB] transition-colors"
-                        >
+                        <button className="p-2 rounded-lg hover:bg-[#F5F0EB] transition-colors">
                           <Eye className="w-4 h-4 text-[#8A7568]" />
                         </button>
-                        <button
-                          onClick={(e) => e.stopPropagation()}
-                          className="p-2 rounded-lg hover:bg-[#F5F0EB] transition-colors"
-                        >
+                        <button className="p-2 rounded-lg hover:bg-[#F5F0EB] transition-colors">
                           <Download className="w-4 h-4 text-[#8A7568]" />
+                        </button>
+                        <button className="p-2 rounded-lg hover:bg-[#F5F0EB] transition-colors">
+                          <Share2 className="w-4 h-4 text-[#8A7568]" />
                         </button>
                       </div>
                     </td>
