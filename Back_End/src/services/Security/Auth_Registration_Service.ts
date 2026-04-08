@@ -24,7 +24,6 @@ export interface VerifyEmailDto {
 
 export class AuthService {
   async register(data: RegisterDto) {
-    // Check if user already exists
     const existingUser = await userDao.findByEmailOrPhone(
       data.email,
       data.phoneNumber
@@ -39,33 +38,26 @@ export class AuthService {
       }
     }
 
-    // Validate date of birth
+    // well its about validating the date of birth
     const dob = new Date(data.dateOfBirth);
     if (isNaN(dob.getTime())) {
       throw new Error("Invalid date of birth");
     }
 
-    // Check if user is at least 13 years old
-    const age = this.calculateAge(dob);
-    if (age < 13) {
-      throw new Error("You must be at least 13 years old to register");
-    }
 
-    // Hash password
     const passwordHash = await hashPassword(data.password, 1);
 
-    // Create user
     const user = await userDao.create({
       email: data.email,
       passwordHash,
       passwordPepperVersion: 1,
       phoneNumber: data.phoneNumber,
-      dateOfBirth: data.dateOfBirth, // Keep as string 'YYYY-MM-DD'
+      dateOfBirth: data.dateOfBirth, 
       name: data.name,
       picture: data.picture,
     });
 
-    // Generate OTP for email verification
+
     const otp = generate6DigitOtp();
     const otpHash = hashOtp(user.id, "email_verification", otp);
 
@@ -89,19 +81,13 @@ export class AuthService {
   }
 
   async login(data: LoginDto) {
-    // Find user
     const user = await userDao.findByEmail(data.email);
-
     if (!user) {
       throw new Error("Invalid credentials");
     }
-
-    // Check if blocked
     if (user.isBlocked) {
       throw new Error("Your account has been blocked. Please contact support.");
     }
-
-    // Verify password
     const isValid = await verifyPassword(
       user.passwordHash,
       data.password,
@@ -176,7 +162,6 @@ export class AuthService {
       throw new Error("Email already verified");
     }
 
-    // Generate new OTP
     const otp = generate6DigitOtp();
     const otpHash = hashOtp(user.id, "email_verification", otp);
 
@@ -211,17 +196,6 @@ export class AuthService {
     };
   }
 
-  private calculateAge(birthDate: Date): number {
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-
-    return age;
-  }
 }
 
 export const authService = new AuthService();

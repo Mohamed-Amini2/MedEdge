@@ -70,7 +70,7 @@ export class AuthController {
         data: result,
       });
     } catch (error) {
-      next(error);
+      return res.status(401).json({Message: "Invalid email or password"});
     }
   }
 

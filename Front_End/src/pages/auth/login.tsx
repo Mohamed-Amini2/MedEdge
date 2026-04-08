@@ -1,5 +1,6 @@
 import logo from "../../assets/logo_hero.png";
 import { useState } from "react";
+import { useNavigate } from 'react-router-dom';
 
 const BACKEND_URL = "http://localhost:3000";
 
@@ -21,12 +22,15 @@ const loginUser = async (email: string, password: string) => {
   return { ...data, _status: res.status };
 };
 
+
 const Login_Page = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+
+  const navigate = useNavigate();
 
   const Handle_Login = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,9 +45,13 @@ const Login_Page = () => {
         if (data.data?.user) {
           localStorage.setItem("user", JSON.stringify(data.data.user));
         }
-        window.location.href = "/dashboard";
+        navigate("/dashboard");
       } else {
-        setError(data.error || data.message || "Login failed");
+        if (data._status === 401) {
+          setError("Invalid email or password");
+        } else if (!data.success) {
+          setError("Something went wrong. Please try again.");
+        }
       }
     } catch (err) {
       setError("Network error. Please try again.");
