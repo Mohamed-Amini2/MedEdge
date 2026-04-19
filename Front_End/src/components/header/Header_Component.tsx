@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { Accessibility } from "lucide-react";
 import type { NavItem } from "./types";
 import logo from "../../assets/image-logo.png";
 
@@ -44,14 +45,12 @@ const Header = ({
   const border = "border-[#EDE5DF]/50";
   const text   = "text-[#5A3C30]";
 
-  /* ── User dropdown ────────────────────────────────────────────── */
   const UserBtn = () => (
     <div
       className="relative"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      {/* Button */}
       <button
         aria-label="Account"
         className={`w-11 h-11 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${
@@ -65,10 +64,7 @@ const Header = ({
         </svg>
       </button>
 
-      {/* Invisible bridge to prevent gap-triggered close */}
       <div className="absolute right-0 top-full h-2 w-full" />
-
-      {/* Dropdown */}
       <div
         className={`absolute right-0 top-[calc(100%+0.5rem)] w-44 rounded-sm border border-[#EDE5DF] bg-white shadow-lg shadow-[#C4521A]/5 overflow-hidden transition-all duration-200 ${
           userMenuOpen
@@ -76,7 +72,6 @@ const Header = ({
             : "opacity-0 -translate-y-1 pointer-events-none"
         }`}
       >
-        {/* Top accent */}
         <div className="h-0.5 w-full" style={{ backgroundColor: TERRA }} />
 
         <button
@@ -100,6 +95,12 @@ const Header = ({
           </svg>
           SIGN UP
         </button>
+        <button
+              className="w-full flex items-center gap-3 px-4 py-3 text-xs tracking-[0.15em] text-[#5A3C30] hover:text-[#C4521A] hover:bg-[#FBF7F2] transition-colors"
+              >
+               <Accessibility className="w-4 h-4 flex-shrink-0" />  
+               Accessibility  
+              </button>
       </div>
     </div>
   );

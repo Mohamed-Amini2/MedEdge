@@ -125,7 +125,7 @@ const VerifyEmail_Page = () => {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-50">
+    <main className="relative min-h-screen overflow-hidden bg-slate-50">
       {/* Soft gradient base */}
       <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-orange-50/40 to-amber-50/40" />
       
@@ -235,7 +235,7 @@ const VerifyEmail_Page = () => {
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 };
 
