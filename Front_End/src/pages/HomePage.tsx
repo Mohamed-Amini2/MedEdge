@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useToast } from '@/components/ui/feedback';
 import Header from '../components/header/Header_Component';
 import type { NavItem } from '../components/header/types';
 import logo from '../assets/image-logo.png';
@@ -20,6 +21,12 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 const HomePage = () => {
+  const notify = useToast();
+  const legalText: Record<string, string> = {
+    'Privacy Policy': 'Your medical data is visible only to you and the doctors you choose.',
+    'Terms of Service': 'MedEdge is a coursework project and does not replace a real consultation.',
+    'HIPAA Compliance': 'Data is encrypted in transit and passwords are stored as argon2 hashes.',
+  };
   const [isMenuOpen,    setIsMenuOpen   ] = useState(false);
   const [activeSection, setActiveSection] = useState<string>('hero');
 
@@ -163,7 +170,7 @@ const HomePage = () => {
               <ul className="space-y-3 text-sm">
                 {['Privacy Policy', 'Terms of Service', 'HIPAA Compliance'].map((link) => (
                   <li key={link}>
-                    <button className="text-[#7A6458] hover:text-[#C4521A] transition-colors">
+                    <button onClick={() => notify(legalText[link])} className="text-[#7A6458] hover:text-[#C4521A] transition-colors">
                       {link}
                     </button>
                   </li>

@@ -1,4 +1,8 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { firstName, getStoredUser } from '@/lib/auth'
+import { useLang } from '@/lib/i18n'
+import { CallModal, useToast } from '@/components/ui/feedback'
 import {
   Calendar, FileText, MessageSquare, RefreshCw, Heart, Activity,
   Droplet, Wind, TrendingUp, TrendingDown, Minus, ChevronRight,
@@ -91,7 +95,19 @@ const SectionHeader = ({ label, action, onAction }: { label: string; action?: st
 )
 
 const Dashboard_Client = () => {
-  const today = new Date().toLocaleDateString('en-US', {
+  const navigate = useNavigate()
+  const notify = useToast()
+  const { lang } = useLang()
+  const [callWith, setCallWith] = useState<string | null>(null)
+
+  const openCard = (label: string) => {
+    if (label === 'Total Appointments') navigate('/dashboard/appointments', { state: { book: true } })
+    else if (label === 'Active Records') navigate('/dashboard/records')
+    else if (label === 'Unread Messages') navigate('/dashboard/messages')
+    else navigate('/dashboard/prescriptions')
+  }
+
+  const today = new Date().toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US', {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
@@ -99,6 +115,7 @@ const Dashboard_Client = () => {
 
   return (
     <div className="space-y-6 animate-fadeIn">
+      {callWith && <CallModal doctor={callWith} onClose={() => setCallWith(null)} />}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -128,17 +145,16 @@ const Dashboard_Client = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="relative w-10 h-10 rounded-xl bg-white border border-[#D6CCC2] flex items-center justify-center shadow-sm hover:shadow-md transition-all">
+          <button onClick={() => notify('You have 1 appointment today and 1 prescription to refill')} className="relative w-10 h-10 rounded-xl bg-white border border-[#D6CCC2] flex items-center justify-center shadow-sm hover:shadow-md transition-all">
             <Bell className="w-5 h-5 text-[#5C4A3E]" />
             <span className="absolute top-2 right-2 w-2 h-2 rounded-full border-2 border-white" style={{ backgroundColor: TERRA }} />
           </button>
-          <button
+          <button onClick={() => navigate('/dashboard/appointments', { state: { book: true } })}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-xs font-semibold tracking-wide shadow-sm hover:opacity-90 transition-all"
             style={{ backgroundColor: TERRA }}
           >
             <Plus className="w-4 h-4" />
-            BOOK APPOINTMENT
-          </button>
+            BOOK APPOINTMENT</button>
         </div>
       </div>
 
@@ -149,6 +165,7 @@ const Dashboard_Client = () => {
           return (
             <button
               key={card.label}
+              onClick={() => openCard(card.label)}
               className="group bg-white rounded-xl border border-[#D6CCC2] shadow-sm p-5 text-left hover:shadow-md hover:border-[#C4A99A] transition-all duration-200 flex flex-col gap-3"
             >
               <div className="flex items-center justify-between">
@@ -256,12 +273,11 @@ const Dashboard_Client = () => {
                       {appt.time}
                     </div>
                     {appt.isToday && (
-                      <button
+                      <button onClick={() => setCallWith(appt.label)}
                         className="w-full text-[11px] font-semibold py-2 rounded-lg text-white hover:opacity-90 transition-opacity"
                         style={{ backgroundColor: TERRA }}
                       >
-                        Join Call
-                      </button>
+                        Join Call</button>
                     )}
                   </div>
                 </div>
@@ -303,12 +319,11 @@ const Dashboard_Client = () => {
                     <span>{record.date}</span>
                   </div>
                 </div>
-                <button
+                <button onClick={() => navigate('/dashboard/records')}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#D6CCC2] text-[11px] font-medium text-[#5C4A3E] opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#F5F0EB]"
                 >
                   <Eye className="w-3 h-3" />
-                  View
-                </button>
+                  View</button>
               </div>
             ))}
           </div>

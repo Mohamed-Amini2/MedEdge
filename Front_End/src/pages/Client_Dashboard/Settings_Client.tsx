@@ -1,4 +1,8 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Modal, PrimaryButton, SecondaryButton, downloadFile, useToast } from '@/components/ui/feedback'
+import { useAuth } from '@/lib/AuthContext'
+import { useLang, type Lang } from '@/lib/i18n'
 import {
   User, Bell, Shield, Palette, Globe, CreditCard, HelpCircle, Plus ,
   ChevronRight, Camera, Mail, Phone, MapPin, Calendar, Check,
@@ -42,6 +46,54 @@ const Settings_Client = () => {
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('light')
   const [showPassword, setShowPassword] = useState(false)
   const [saved, setSaved] = useState(false)
+  const navigate = useNavigate()
+  const notify = useToast()
+  const { user, logout } = useAuth()
+  const { lang, setLang } = useLang()
+  const displayName = user?.name ?? 'Mohamed Amini'
+  const initials = displayName.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase()
+  const [photo, setPhoto] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [twoFactor, setTwoFactor] = useState(false)
+  const [plansOpen, setPlansOpen] = useState(false)
+  const [helpOpen, setHelpOpen] = useState<string | null>(null)
+  const [channels, setChannels] = useState<Record<string, boolean>>({ Email: true, SMS: true, 'Push Notifications': true })
+
+  const pickPhoto = () => {
+    const picker = document.createElement('input')
+    picker.type = 'file'
+    picker.accept = 'image/*'
+    picker.onchange = () => {
+      const file = picker.files?.[0]
+      if (!file) return
+      const reader = new FileReader()
+      reader.onload = () => {
+        setPhoto(String(reader.result))
+        notify('Profile photo updated')
+      }
+      reader.readAsDataURL(file)
+    }
+    picker.click()
+  }
+
+  const updatePassword = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const fields = Array.from(e.currentTarget.parentElement?.querySelectorAll('input[type=password]') ?? []) as HTMLInputElement[]
+    const [current, next, confirm] = fields.map((f) => f.value)
+    if (!current || !next || !confirm) return notify('Fill in all three password fields')
+    if (next.length < 8 || !/[A-Z]/.test(next) || !/[a-z]/.test(next) || !/[0-9]/.test(next)) {
+      return notify('New password needs 8+ characters, upper and lower case letters and a number')
+    }
+    if (next !== confirm) return notify('The new passwords do not match')
+    fields.forEach((f) => (f.value = ''))
+    notify('Password updated')
+  }
+
+  const helpText: Record<string, string> = {
+    FAQ: 'How do I book a visit? Open Appointments and press Book Appointment. How do I reach my doctor? Use Messages. Where are my results? Under Medical Records.',
+    'Contact Support': 'Write to support@mededge.app or call +7 (391) 000-00-00 on weekdays from 09:00 to 18:00.',
+    'Privacy Policy': 'Your medical data is visible only to you and the doctors you choose. Passwords are stored as salted argon2 hashes.',
+    'Terms of Service': 'MedEdge is a coursework project. It does not replace a real medical consultation.',
+  }
 
   const handleSave = () => {
     setSaved(true)
@@ -54,6 +106,41 @@ const Settings_Client = () => {
 
   return (
     <div className="animate-fadeIn">
+      {confirmDelete && (
+        <Modal
+          title="Delete account?"
+          onClose={() => setConfirmDelete(false)}
+          footer={
+            <>
+              <SecondaryButton onClick={() => setConfirmDelete(false)}>Keep my account</SecondaryButton>
+              <PrimaryButton
+                onClick={() => {
+                  setConfirmDelete(false)
+                  notify('Deletion request submitted. No data was removed in this demo.')
+                }}
+              >
+                Yes, request deletion
+              </PrimaryButton>
+            </>
+          }
+        >
+          This will request permanent deletion of your account and medical data.
+        </Modal>
+      )}
+      {plansOpen && (
+        <Modal title="Plans" onClose={() => setPlansOpen(false)} footer={<PrimaryButton onClick={() => setPlansOpen(false)}>Close</PrimaryButton>}>
+          <div className="space-y-2">
+            <p><span className="font-semibold text-[#1A0F0A]">Basic, $9/month:</span> appointments and messages.</p>
+            <p><span className="font-semibold text-[#1A0F0A]">Standard, $19/month:</span> adds records and prescriptions.</p>
+            <p><span className="font-semibold text-[#1A0F0A]">Premium, $29/month (your plan):</span> full access, priority support, unlimited records.</p>
+          </div>
+        </Modal>
+      )}
+      {helpOpen && (
+        <Modal title={helpOpen} onClose={() => setHelpOpen(null)} footer={<PrimaryButton onClick={() => setHelpOpen(null)}>Close</PrimaryButton>}>
+          {helpText[helpOpen]}
+        </Modal>
+      )}
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-2">
@@ -111,19 +198,18 @@ const Settings_Client = () => {
                       className="w-24 h-24 rounded-2xl flex items-center justify-center text-white text-3xl font-bold shadow-lg"
                       style={{ backgroundColor: TERRA }}
                     >
-                      MA
+                      {photo ? <img src={photo} alt="Profile" className="w-full h-full object-cover rounded-2xl" /> : initials}
                     </div>
-                    <button className="absolute -bottom-2 -right-2 w-10 h-10 rounded-xl bg-white border border-[#D6CCC2] flex items-center justify-center shadow-md hover:shadow-lg transition-all group-hover:scale-110">
+                    <button onClick={pickPhoto} className="absolute -bottom-2 -right-2 w-10 h-10 rounded-xl bg-white border border-[#D6CCC2] flex items-center justify-center shadow-md hover:shadow-lg transition-all group-hover:scale-110">
                       <Camera className="w-5 h-5 text-[#5C4A3E]" />
                     </button>
                   </div>
                   <div>
-                    <h3 className="text-xl font-semibold text-[#1A0F0A]">Mohamed Amini</h3>
+                    <h3 className="text-xl font-semibold text-[#1A0F0A]">{displayName}</h3>
                     <p className="text-sm text-[#8A7568] mt-1">Patient ID: #PAT-2024-1847</p>
                     <p className="text-sm text-[#8A7568]">Member since January 2024</p>
-                    <button className="text-sm font-medium mt-3 hover:underline" style={{ color: TERRA }}>
-                      Change photo
-                    </button>
+                    <button onClick={pickPhoto} className="text-sm font-medium mt-3 hover:underline" style={{ color: TERRA }}>
+                      Change photo</button>
                   </div>
                 </div>
 
@@ -132,7 +218,7 @@ const Settings_Client = () => {
                   {[
                     { icon: User, label: 'Full Name', value: 'Mohamed Amini', type: 'text' },
                     { icon: Mail, label: 'Email Address', value: 'mohamed@example.com', type: 'email' },
-                    { icon: Phone, label: 'Phone Number', value: '+1 (555) 123-4567', type: 'tel' },
+                    { icon: Phone, label: 'Phone Number', value: '+7 (391) 123-45-67', type: 'tel' },
                     { icon: Calendar, label: 'Date of Birth', value: '1990-05-15', type: 'date' },
                   ].map((field) => (
                     <div key={field.label}>
@@ -165,9 +251,8 @@ const Settings_Client = () => {
                 </div>
 
                 <div className="flex items-center justify-end gap-4 mt-8 pt-8 border-t border-[#EDE6DE]">
-                  <button className="px-6 py-3 rounded-xl border border-[#D6CCC2] text-sm font-semibold text-[#5C4A3E] hover:bg-[#F5F0EB] transition-all">
-                    Cancel
-                  </button>
+                  <button onClick={() => notify('Changes discarded')} className="px-6 py-3 rounded-xl border border-[#D6CCC2] text-sm font-semibold text-[#5C4A3E] hover:bg-[#F5F0EB] transition-all">
+                    Cancel</button>
                   <button
                     onClick={handleSave}
                     className="px-6 py-3 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-all flex items-center gap-2 shadow-lg shadow-[#A33A10]/20"
@@ -216,7 +301,7 @@ const Settings_Client = () => {
                     </label>
                     <input
                       type="tel"
-                      defaultValue="+1 (555) 987-6543"
+                      defaultValue="+7 (391) 987-65-43"
                       className="w-full px-4 py-3.5 rounded-xl border border-[#EDE6DE] bg-[#FDFCFA] text-sm text-[#1A0F0A] focus:outline-none focus:border-[#A33A10]/50 transition-all"
                     />
                   </div>
@@ -254,11 +339,12 @@ const Settings_Client = () => {
                   {['Email', 'SMS', 'Push Notifications'].map((channel) => (
                     <button
                       key={channel}
+                      onClick={() => { setChannels((c) => ({ ...c, [channel]: !c[channel] })); notify(channel + (channels[channel] ? ' notifications off' : ' notifications on')) }}
                       className="flex items-center gap-3 px-5 py-3 rounded-xl border-2 border-[#A33A10] text-sm font-medium hover:bg-[#A33A10]/5 transition-all"
                       style={{ color: TERRA }}
                     >
                       <div className="w-5 h-5 rounded border-2 border-[#A33A10] flex items-center justify-center">
-                        <Check className="w-3 h-3" style={{ color: TERRA }} />
+                        {channels[channel] && <Check className="w-3 h-3" style={{ color: TERRA }} />}
                       </div>
                       {channel}
                     </button>
@@ -319,12 +405,11 @@ const Settings_Client = () => {
                       />
                     </div>
                   </div>
-                  <button
+                  <button onClick={updatePassword}
                     className="px-6 py-3 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-all"
                     style={{ backgroundColor: TERRA }}
                   >
-                    Update Password
-                  </button>
+                    Update Password</button>
                 </div>
               </div>
 
@@ -340,8 +425,11 @@ const Settings_Client = () => {
                       <p className="text-xs text-[#8A7568] mt-0.5">Use an authenticator app for additional security</p>
                     </div>
                   </div>
-                  <button className="px-5 py-2.5 rounded-xl border border-[#D6CCC2] text-sm font-semibold text-[#5C4A3E] hover:bg-[#F5F0EB] transition-all">
-                    Enable
+                  <button
+                    onClick={() => { setTwoFactor((v) => !v); notify(twoFactor ? 'Two-factor authentication disabled' : 'Two-factor authentication enabled') }}
+                    className="px-5 py-2.5 rounded-xl border border-[#D6CCC2] text-sm font-semibold text-[#5C4A3E] hover:bg-[#F5F0EB] transition-all"
+                  >
+                    {twoFactor ? 'Disable' : 'Enable'}
                   </button>
                 </div>
               </div>
@@ -352,7 +440,7 @@ const Settings_Client = () => {
                   Danger Zone
                 </h2>
                 <div className="space-y-4">
-                  <button className="flex items-center gap-4 w-full p-5 rounded-xl border border-[#EDE6DE] hover:border-red-200 hover:bg-red-50 transition-all group">
+                  <button onClick={() => { downloadFile('my-mededge-data.json', JSON.stringify({ user, notifications, channels, theme }, null, 2), 'application/json'); notify('Your data was downloaded') }} className="flex items-center gap-4 w-full p-5 rounded-xl border border-[#EDE6DE] hover:border-red-200 hover:bg-red-50 transition-all group">
                     <Download className="w-6 h-6 text-[#5C4A3E] group-hover:text-red-500" />
                     <div className="text-left flex-1">
                       <h3 className="text-sm font-semibold text-[#1A0F0A] group-hover:text-red-600">Download My Data</h3>
@@ -360,7 +448,7 @@ const Settings_Client = () => {
                     </div>
                     <ChevronRight className="w-5 h-5 text-[#A89080] group-hover:text-red-400" />
                   </button>
-                  <button className="flex items-center gap-4 w-full p-5 rounded-xl border border-red-200 hover:bg-red-50 transition-all group">
+                  <button onClick={() => setConfirmDelete(true)} className="flex items-center gap-4 w-full p-5 rounded-xl border border-red-200 hover:bg-red-50 transition-all group">
                     <Trash2 className="w-6 h-6 text-red-500" />
                     <div className="text-left flex-1">
                       <h3 className="text-sm font-semibold text-red-600">Delete Account</h3>
@@ -417,12 +505,13 @@ const Settings_Client = () => {
                     </label>
                     <div className="relative">
                       <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#A89080]" />
-                      <select className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-[#EDE6DE] bg-[#FDFCFA] text-sm text-[#1A0F0A] appearance-none focus:outline-none focus:border-[#A33A10]/50">
-                        <option>English (US)</option>
-                        <option>Spanish</option>
-                        <option>French</option>
-                        <option>Arabic</option>
-                        <option>German</option>
+                      <select
+                        value={lang}
+                        onChange={(e) => setLang(e.target.value as Lang)}
+                        className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-[#EDE6DE] bg-[#FDFCFA] text-sm text-[#1A0F0A] appearance-none focus:outline-none focus:border-[#A33A10]/50"
+                      >
+                        <option value="en">English</option>
+                        <option value="ru">Русский</option>
                       </select>
                     </div>
                   </div>
@@ -433,10 +522,11 @@ const Settings_Client = () => {
                     <div className="relative">
                       <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#A89080]" />
                       <select className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-[#EDE6DE] bg-[#FDFCFA] text-sm text-[#1A0F0A] appearance-none focus:outline-none focus:border-[#A33A10]/50">
-                        <option>Eastern Time (ET)</option>
-                        <option>Pacific Time (PT)</option>
-                        <option>Central Time (CT)</option>
-                        <option>Mountain Time (MT)</option>
+                        <option>Krasnoyarsk (UTC+7)</option>
+                        <option>Moscow (UTC+3)</option>
+                        <option>Novosibirsk (UTC+7)</option>
+                        <option>Yekaterinburg (UTC+5)</option>
+                        <option>Vladivostok (UTC+10)</option>
                       </select>
                     </div>
                   </div>
@@ -474,15 +564,13 @@ const Settings_Client = () => {
                   </div>
                 </div>
                 <div className="flex gap-3 mt-6">
-                  <button
+                  <button onClick={() => notify('You already have the Premium Health Plan')}
                     className="px-5 py-2.5 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-all"
                     style={{ backgroundColor: TERRA }}
                   >
-                    Upgrade Plan
-                  </button>
-                  <button className="px-5 py-2.5 rounded-xl border border-[#D6CCC2] text-sm font-semibold text-[#5C4A3E] hover:bg-[#F5F0EB] transition-all">
-                    View All Plans
-                  </button>
+                    Upgrade Plan</button>
+                  <button onClick={() => setPlansOpen(true)} className="px-5 py-2.5 rounded-xl border border-[#D6CCC2] text-sm font-semibold text-[#5C4A3E] hover:bg-[#F5F0EB] transition-all">
+                    View All Plans</button>
                 </div>
               </div>
 
@@ -499,17 +587,15 @@ const Settings_Client = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button className="text-sm font-medium hover:underline" style={{ color: TERRA }}>
-                      Edit
-                    </button>
+                    <button onClick={() => notify('Card details are edited in the payment provider window, which is not connected yet')} className="text-sm font-medium hover:underline" style={{ color: TERRA }}>
+                      Edit</button>
                     <span className="text-[#D6CCC2]">|</span>
-                    <button className="text-sm font-medium text-red-500 hover:underline">Remove</button>
+                    <button onClick={() => notify('Payment method removal needs the payment provider, which is not connected yet')} className="text-sm font-medium text-red-500 hover:underline">Remove</button>
                   </div>
                 </div>
-                <button className="mt-4 text-sm font-medium hover:underline flex items-center gap-1" style={{ color: TERRA }}>
+                <button onClick={() => notify('Adding cards needs the payment provider, which is not connected yet')} className="mt-4 text-sm font-medium hover:underline flex items-center gap-1" style={{ color: TERRA }}>
                   <Plus className="w-4 h-4" />
-                  Add new payment method
-                </button>
+                  Add new payment method</button>
               </div>
 
               <div className="bg-white rounded-xl border border-[#D6CCC2] p-8 shadow-sm">
@@ -535,9 +621,8 @@ const Settings_Client = () => {
                         <span className="text-[10px] px-2 py-1 rounded-full font-medium bg-green-50 text-green-600">
                           {invoice.status}
                         </span>
-                        <button className="text-sm font-medium hover:underline" style={{ color: TERRA }}>
-                          Download
-                        </button>
+                        <button onClick={() => { downloadFile('invoice-' + invoice.date + '.txt', JSON.stringify(invoice, null, 2)); notify('Invoice downloaded') }} className="text-sm font-medium hover:underline" style={{ color: TERRA }}>
+                          Download</button>
                       </div>
                     </div>
                   ))}
@@ -561,6 +646,7 @@ const Settings_Client = () => {
                   return (
                     <button
                       key={item.label}
+                      onClick={() => setHelpOpen(item.label)}
                       className="flex items-center justify-between w-full p-5 rounded-xl border border-[#EDE6DE] hover:border-[#D6CCC2] hover:bg-[#FDFCFA] transition-all group"
                     >
                       <div className="flex items-center gap-4">
@@ -579,10 +665,9 @@ const Settings_Client = () => {
               </div>
 
               <div className="mt-10 pt-8 border-t border-[#EDE6DE]">
-                <button className="flex items-center gap-3 text-base font-semibold text-red-500 hover:text-red-600 transition-colors">
+                <button onClick={async () => { await logout(); navigate('/login') }} className="flex items-center gap-3 text-base font-semibold text-red-500 hover:text-red-600 transition-colors">
                   <LogOut className="w-5 h-5" />
-                  Sign Out
-                </button>
+                  Sign Out</button>
               </div>
             </div>
           )}

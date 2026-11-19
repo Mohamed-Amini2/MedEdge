@@ -99,7 +99,7 @@ const DoctorsSection = () => (
     </div>
 
     <div className="text-center">
-      <button className="group inline-flex items-center gap-3 text-sm text-[#7A6458] hover:text-[#2C1810] transition-colors">
+      <button onClick={() => window.location.assign('/signup')} className="group inline-flex items-center gap-3 text-sm text-[#7A6458] hover:text-[#2C1810] transition-colors">
         Browse all 1,200+ doctors
         <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
       </button>

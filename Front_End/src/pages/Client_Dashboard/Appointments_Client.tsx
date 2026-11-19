@@ -1,4 +1,6 @@
 import { useState, useEffect, type JSX } from 'react'
+import { useLocation } from 'react-router-dom'
+import { CallModal, Modal, PrimaryButton, SecondaryButton, downloadFile, useToast } from '@/components/ui/feedback'
 import {
   Dialog,
   DialogContent,
@@ -598,11 +600,34 @@ const STAT_CARDS = [
   { label: 'Video Calls', sub: 'Remote consultations',    icon: <Video className="w-5 h-5" />   },
 ]
 
-const INITIAL_APPOINTMENTS = [
-  { id: 1, doctor: 'Dr. James Anderson', specialty: 'Cardiologist',         date: 'Jan 25, 2026', time: '10:00 AM', type: 'Video',     status: 'Upcoming',  reason: 'Annual heart checkup',   target: new Date('2026-01-25T10:00:00') },
-  { id: 2, doctor: 'Dr. Sarah Mitchell', specialty: 'General Practitioner', date: 'Jan 28, 2026', time: '2:30 PM',  type: 'In-person', status: 'Upcoming',  reason: 'Follow-up consultation', target: new Date('2026-01-28T14:30:00') },
-  { id: 3, doctor: 'Dr. Michael Chen',   specialty: 'Dermatologist',        date: 'Jan 20, 2026', time: '11:00 AM', type: 'Video',     status: 'Completed', reason: 'Skin condition review',  target: null },
-  { id: 4, doctor: 'Dr. Emily Brown',    specialty: 'Neurologist',          date: 'Jan 18, 2026', time: '3:00 PM',  type: 'In-person', status: 'Completed', reason: 'Headache evaluation',    target: null },
+type Appt = {
+  id: number
+  doctor: string
+  specialty: string
+  date: string
+  time: string
+  type: string
+  status: string
+  reason: string
+  target: Date | null
+}
+
+const daysFromNow = (days: number, hour: number, minute: number) => {
+  const d = new Date()
+  d.setDate(d.getDate() + days)
+  d.setHours(hour, minute, 0, 0)
+  return d
+}
+const fmtDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+const fmtTime = (d: Date) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+const slot = (d: Date) => ({ date: fmtDate(d), time: fmtTime(d), target: d })
+const past = (days: number, hour: number, minute: number) => ({ ...slot(daysFromNow(-days, hour, minute)), target: null })
+
+const INITIAL_APPOINTMENTS: Appt[] = [
+  { id: 1, doctor: 'Dr. James Anderson', specialty: 'Cardiologist',         type: 'Video',     status: 'Upcoming',  reason: 'Annual heart checkup',   ...slot(daysFromNow(2, 10, 0)) },
+  { id: 2, doctor: 'Dr. Sarah Mitchell', specialty: 'General Practitioner', type: 'In-person', status: 'Upcoming',  reason: 'Follow-up consultation', ...slot(daysFromNow(5, 14, 30)) },
+  { id: 3, doctor: 'Dr. Michael Chen',   specialty: 'Dermatologist',        type: 'Video',     status: 'Completed', reason: 'Skin condition review',  ...past(6, 11, 0) },
+  { id: 4, doctor: 'Dr. Emily Brown',    specialty: 'Neurologist',          type: 'In-person', status: 'Completed', reason: 'Headache evaluation',    ...past(9, 15, 0) },
 ]
 
 const TABS = ['All', 'Upcoming', 'Completed']
@@ -666,10 +691,31 @@ const SuccessToast = ({ doctor, date, time }: { doctor: string; date: string; ti
 
 const Appointments_Client = () => {
   const [activeTab,    setActiveTab   ] = useState('All')
-  const [appointments, setAppointments] = useState(INITIAL_APPOINTMENTS)
+  const [appointments, setAppointments] = useState<Appt[]>(INITIAL_APPOINTMENTS)
   const [cancelTarget, setCancelTarget] = useState<number | null>(null)
   const [bookingOpen,  setBookingOpen ] = useState(false)
   const [toast,        setToast       ] = useState<{ doctor: string; date: string; time: string } | null>(null)
+  const location = useLocation()
+  const notify = useToast()
+  const [callTarget, setCallTarget] = useState<Appt | null>(null)
+  const [summaryTarget, setSummaryTarget] = useState<Appt | null>(null)
+  const [rescheduleTarget, setRescheduleTarget] = useState<Appt | null>(null)
+  const [newDate, setNewDate] = useState('')
+  const [newTime, setNewTime] = useState('09:00')
+
+  useEffect(() => {
+    if ((location.state as { book?: boolean } | null)?.book) setBookingOpen(true)
+  }, [location.state])
+
+  const handleReschedule = () => {
+    if (!rescheduleTarget || !newDate) return
+    const [h, m] = newTime.split(':').map(Number)
+    const d = new Date(newDate + 'T00:00:00')
+    d.setHours(h, m, 0, 0)
+    setAppointments((prev) => prev.map((a) => (a.id === rescheduleTarget.id ? { ...a, ...slot(d) } : a)))
+    notify('Rescheduled with ' + rescheduleTarget.doctor + ' to ' + fmtDate(d) + ' at ' + fmtTime(d))
+    setRescheduleTarget(null)
+  }
 
   const filtered = appointments.filter((a) => activeTab === 'All' ? true : a.status === activeTab)
 
@@ -705,6 +751,64 @@ const Appointments_Client = () => {
         return <CancelModal doctor={appt.doctor} onConfirm={() => handleCancel(cancelTarget)} onClose={() => setCancelTarget(null)} />
       })()}
       <BookingModal open={bookingOpen} onClose={() => setBookingOpen(false)} onConfirm={handleBookingConfirm} />
+      {callTarget && <CallModal doctor={callTarget.doctor} withVideo={callTarget.type === 'Video'} onClose={() => setCallTarget(null)} />}
+      {summaryTarget && (
+        <Modal
+          title={'Visit summary: ' + summaryTarget.doctor}
+          onClose={() => setSummaryTarget(null)}
+          footer={
+            <>
+              <SecondaryButton onClick={() => downloadFile('visit-summary-' + summaryTarget.id + '.txt', 'Visit summary\nDoctor: ' + summaryTarget.doctor + '\nSpecialty: ' + summaryTarget.specialty + '\nDate: ' + summaryTarget.date + ' ' + summaryTarget.time + '\nReason: ' + summaryTarget.reason + '\nResult: no abnormalities found, follow-up in 6 months.\n')}>Download</SecondaryButton>
+              <PrimaryButton onClick={() => setSummaryTarget(null)}>Close</PrimaryButton>
+            </>
+          }
+        >
+          <div className="space-y-2">
+            <p><span className="font-semibold text-[#1A0F0A]">Specialty:</span> {summaryTarget.specialty}</p>
+            <p><span className="font-semibold text-[#1A0F0A]">Date:</span> {summaryTarget.date} at {summaryTarget.time}</p>
+            <p><span className="font-semibold text-[#1A0F0A]">Reason:</span> {summaryTarget.reason}</p>
+            <p><span className="font-semibold text-[#1A0F0A]">Result:</span> No abnormalities found. Continue the current treatment and come back for a follow-up in 6 months.</p>
+          </div>
+        </Modal>
+      )}
+      {rescheduleTarget && (
+        <Modal
+          title={'Reschedule: ' + rescheduleTarget.doctor}
+          onClose={() => setRescheduleTarget(null)}
+          footer={
+            <>
+              <SecondaryButton onClick={() => setRescheduleTarget(null)}>Keep current time</SecondaryButton>
+              <PrimaryButton onClick={handleReschedule} disabled={!newDate}>Confirm new time</PrimaryButton>
+            </>
+          }
+        >
+          <div className="space-y-4">
+            <p>Current: {rescheduleTarget.date} at {rescheduleTarget.time}</p>
+            <label className="block">
+              <span className="text-xs font-semibold uppercase tracking-wider text-[#5C4A3E]">New date</span>
+              <input
+                type="date"
+                value={newDate}
+                min={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setNewDate(e.target.value)}
+                className="mt-1 w-full px-4 py-3 rounded-xl border border-[#EDE6DE] bg-[#FDFCFA] text-sm"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs font-semibold uppercase tracking-wider text-[#5C4A3E]">New time</span>
+              <select
+                value={newTime}
+                onChange={(e) => setNewTime(e.target.value)}
+                className="mt-1 w-full px-4 py-3 rounded-xl border border-[#EDE6DE] bg-[#FDFCFA] text-sm"
+              >
+                {['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'].map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </Modal>
+      )}
       {toast && <SuccessToast doctor={toast.doctor} date={toast.date} time={toast.time} />}
 
       <div className="flex items-center justify-between mb-8">
@@ -724,7 +828,7 @@ const Appointments_Client = () => {
             <Plus className="w-4 h-4" />
             BOOK APPOINTMENT
           </button>
-          <button className="relative w-10 h-10 rounded-xl bg-white border border-[#D6CCC2] flex items-center justify-center shadow-sm hover:shadow-md transition-all">
+          <button onClick={() => notify(upcomingCount + ' upcoming appointment(s)')} className="relative w-10 h-10 rounded-xl bg-white border border-[#D6CCC2] flex items-center justify-center shadow-sm hover:shadow-md transition-all">
             <Bell className="w-5 h-5 text-[#5C4A3E]" />
             <span className="absolute top-2 right-2 w-2 h-2 rounded-full border-2 border-white" style={{ backgroundColor: TERRA }} />
           </button>
@@ -779,14 +883,14 @@ const Appointments_Client = () => {
               <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
                 {appt.status === 'Upcoming' && (
                   <>
-                    <button className="px-4 py-2 rounded-lg text-xs font-semibold text-white hover:opacity-90 transition-all" style={{ backgroundColor: TERRA }}>Join Call</button>
-                    <button className="px-4 py-2 rounded-lg text-xs font-semibold border border-[#D6CCC2] text-[#7A6458] hover:border-[#C4A99A] hover:text-[#1A0F0A] transition-all">Reschedule</button>
+                    <button onClick={() => setCallTarget(appt)} className="px-4 py-2 rounded-lg text-xs font-semibold text-white hover:opacity-90 transition-all" style={{ backgroundColor: TERRA }}>Join Call</button>
+                    <button onClick={() => { setRescheduleTarget(appt); setNewDate('') }} className="px-4 py-2 rounded-lg text-xs font-semibold border border-[#D6CCC2] text-[#7A6458] hover:border-[#C4A99A] hover:text-[#1A0F0A] transition-all">Reschedule</button>
                     <button onClick={() => setCancelTarget(appt.id)} className="px-4 py-2 rounded-lg text-xs font-semibold border border-red-200 text-red-400 hover:bg-red-50 hover:border-red-300 transition-all">Cancel</button>
                   </>
                 )}
                 {appt.status === 'Completed' && (
                   <>
-                    <button className="px-4 py-2 rounded-lg text-xs font-semibold border border-[#D6CCC2] text-[#7A6458] hover:border-[#C4A99A] hover:text-[#1A0F0A] transition-all">View Summary</button>
+                    <button onClick={() => setSummaryTarget(appt)} className="px-4 py-2 rounded-lg text-xs font-semibold border border-[#D6CCC2] text-[#7A6458] hover:border-[#C4A99A] hover:text-[#1A0F0A] transition-all">View Summary</button>
                     <button onClick={() => setBookingOpen(true)} className="px-4 py-2 rounded-lg text-xs font-semibold text-white hover:opacity-90 transition-all flex items-center gap-1.5" style={{ backgroundColor: TERRA }}>
                       <RefreshCw className="w-3.5 h-3.5" />
                       Book Again

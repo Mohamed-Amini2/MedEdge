@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Accessibility } from "lucide-react";
+import { Accessibility, LogOut } from "lucide-react";
+import { useAuth } from "@/lib/AuthContext";
 import type { NavItem } from "./types";
 import logo from "../../assets/image-logo.png";
 
@@ -25,6 +26,13 @@ const Header = ({
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  const signOut = async () => {
+    await logout();
+    setUserMenuOpen(false);
+    navigate("/");
+  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -53,6 +61,7 @@ const Header = ({
     >
       <button
         aria-label="Account"
+        onClick={() => setUserMenuOpen((open) => !open)}
         className={`w-11 h-11 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${
           userMenuOpen
             ? "border-[#C4521A] text-[#C4521A]"
@@ -74,6 +83,19 @@ const Header = ({
       >
         <div className="h-0.5 w-full" style={{ backgroundColor: TERRA }} />
 
+        {user ? (
+          <>
+            <button
+              onClick={signOut}
+              className="w-full flex items-center gap-3 px-4 py-3 text-xs tracking-[0.15em] text-[#5A3C30] hover:text-[#C4521A] hover:bg-[#FBF7F2] transition-colors"
+            >
+              <LogOut className="w-4 h-4 flex-shrink-0" />
+              SIGN OUT
+            </button>
+            <div className="h-px bg-[#EDE5DF] mx-4" />
+          </>
+        ) : (
+          <>
         <button
           onClick={() => { navigate("/login"); setUserMenuOpen(false); }}
           className="w-full flex items-center gap-3 px-4 py-3 text-xs tracking-[0.15em] text-[#5A3C30] hover:text-[#C4521A] hover:bg-[#FBF7F2] transition-colors"
@@ -95,7 +117,10 @@ const Header = ({
           </svg>
           SIGN UP
         </button>
+          </>
+        )}
         <button
+              onClick={() => { document.documentElement.classList.toggle('a11y-large'); setUserMenuOpen(false); }}
               className="w-full flex items-center gap-3 px-4 py-3 text-xs tracking-[0.15em] text-[#5A3C30] hover:text-[#C4521A] hover:bg-[#FBF7F2] transition-colors"
               >
                <Accessibility className="w-4 h-4 flex-shrink-0" />  
@@ -230,6 +255,16 @@ const Header = ({
               })}
             </ul>
 
+            {user ? (
+              <div className="mt-6 pt-6 border-t border-[#EDE5DF] flex flex-col gap-3">
+                <button
+                  onClick={signOut}
+                  className="w-full text-xs tracking-[0.15em] py-3 border border-[#EDE5DF] text-[#5A3C30] hover:border-[#C4521A] hover:text-[#C4521A] transition-colors"
+                >
+                  SIGN OUT
+                </button>
+              </div>
+            ) : (
             <div className="mt-6 pt-6 border-t border-[#EDE5DF] flex flex-col gap-3">
               <button
                 onClick={() => navigate("/login")}
@@ -245,6 +280,7 @@ const Header = ({
                 SIGN UP
               </button>
             </div>
+            )}
           </div>
         )}
       </header>

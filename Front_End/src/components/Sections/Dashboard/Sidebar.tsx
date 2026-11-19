@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { LayoutDashboard, CalendarDays, FileText, MessageSquare, Pill, Settings, LogOut } from "lucide-react"
 import logo from '../../../assets/image-logo.png'
-import { getStoredUser, logoutRequest } from '@/lib/auth'
+import { useAuth } from '@/lib/AuthContext'
 
 const TERRA = '#A33A10'
 
@@ -41,7 +41,7 @@ const NAV_ITEMS = [
 const Sidebar = () => {
   const navigate  = useNavigate()
   const location  = useLocation()
-  const currentUser = getStoredUser()
+  const { user: currentUser, logout } = useAuth()
 
   const isActive = (path: string) =>
     path === '/dashboard'
@@ -104,7 +104,7 @@ const Sidebar = () => {
             title="Log out"
             className="ml-auto p-2 rounded-lg text-[#8A7568] hover:bg-[#F0E6DD] hover:text-[#1A0F0A] transition-colors"
             onClick={async () => {
-              await logoutRequest()
+              await logout()
               navigate('/login')
             }}
           >

@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Modal, PrimaryButton, SecondaryButton, downloadFile, useToast } from '@/components/ui/feedback'
 import {
   Pill, Search, Filter, Calendar, RefreshCw, AlertTriangle,
   Download, Eye, User, Plus, Package, SortAsc, MoreHorizontal,
@@ -185,8 +187,54 @@ const ProgressBar = ({ current, total }: { current: number; total: number }) => 
 const Prescriptions_Client = () => {
   const [activeTab, setActiveTab] = useState('All')
   const [search, setSearch] = useState('')
+  const navigate = useNavigate()
+  const notify = useToast()
+  const [items, setItems] = useState<Prescription[]>(PRESCRIPTIONS)
+  const [doctorFilter, setDoctorFilter] = useState('All doctors')
+  const [sortMode, setSortMode] = useState<'Name' | 'Refill date' | 'Doctor'>('Name')
+  const [viewing, setViewing] = useState<Prescription | null>(null)
+  const [requestOpen, setRequestOpen] = useState(false)
+  const [requestName, setRequestName] = useState('')
 
-  const filtered = PRESCRIPTIONS.filter((rx) => {
+  const doctors = ['All doctors', ...Array.from(new Set(PRESCRIPTIONS.map((rx) => rx.doctor)))]
+
+  const refill = (id: number) => {
+    setItems((prev) =>
+      prev.map((rx) =>
+        rx.id === id
+          ? { ...rx, status: 'active', refillsLeft: Math.max(0, rx.refillsLeft - 1), pillsRemaining: rx.totalPills, daysUntilRefill: 30 }
+          : rx,
+      ),
+    )
+    const rx = items.find((r) => r.id === id)
+    notify('Refill requested for ' + (rx?.name ?? 'medication'))
+  }
+
+  const refillAll = () => {
+    const needed = items.filter((rx) => rx.status === 'refill-needed')
+    setItems((prev) =>
+      prev.map((rx) =>
+        rx.status === 'refill-needed'
+          ? { ...rx, status: 'active', refillsLeft: Math.max(0, rx.refillsLeft - 1), pillsRemaining: rx.totalPills, daysUntilRefill: 30 }
+          : rx,
+      ),
+    )
+    notify('Refill requested for ' + needed.length + ' prescription(s)')
+  }
+
+  const downloadRx = (rx: Prescription) => {
+    downloadFile(
+      rx.name.toLowerCase() + '-prescription.txt',
+      rx.name + ' ' + rx.dosage + '\n' + rx.genericName + '\nFrequency: ' + rx.frequency + '\nInstructions: ' + rx.instructions + '\nDoctor: ' + rx.doctor + '\nPharmacy: ' + rx.pharmacy + '\nRefills left: ' + rx.refillsLeft + '\n',
+    )
+    notify('Downloaded: ' + rx.name)
+  }
+
+  const ordered = [...items].sort((a, b) =>
+    sortMode === 'Name' ? a.name.localeCompare(b.name) : sortMode === 'Doctor' ? a.doctor.localeCompare(b.doctor) : a.daysUntilRefill - b.daysUntilRefill,
+  )
+
+  const filtered = ordered.filter((rx) => {
     const matchTab =
       activeTab === 'All' ||
       (activeTab === 'Active' && rx.status === 'active') ||
@@ -197,11 +245,64 @@ const Prescriptions_Client = () => {
       rx.name.toLowerCase().includes(search.toLowerCase()) ||
       rx.genericName.toLowerCase().includes(search.toLowerCase()) ||
       rx.doctor.toLowerCase().includes(search.toLowerCase())
-    return matchTab && matchSearch
+    const matchDoctor = doctorFilter === 'All doctors' || rx.doctor === doctorFilter
+    return matchTab && matchSearch && matchDoctor
   })
 
   return (
     <div className="space-y-6 animate-fadeIn">
+      {viewing && (
+        <Modal
+          title={viewing.name + ' ' + viewing.dosage}
+          onClose={() => setViewing(null)}
+          footer={
+            <>
+              <SecondaryButton onClick={() => downloadRx(viewing)}>Download</SecondaryButton>
+              <PrimaryButton onClick={() => setViewing(null)}>Close</PrimaryButton>
+            </>
+          }
+        >
+          <div className="space-y-2">
+            <p><span className="font-semibold text-[#1A0F0A]">Generic name:</span> {viewing.genericName}</p>
+            <p><span className="font-semibold text-[#1A0F0A]">Frequency:</span> {viewing.frequency}</p>
+            <p><span className="font-semibold text-[#1A0F0A]">Instructions:</span> {viewing.instructions}</p>
+            <p><span className="font-semibold text-[#1A0F0A]">Doctor:</span> {viewing.doctor}</p>
+            <p><span className="font-semibold text-[#1A0F0A]">Pharmacy:</span> {viewing.pharmacy}</p>
+            <p><span className="font-semibold text-[#1A0F0A]">Refills left:</span> {viewing.refillsLeft} of {viewing.totalRefills}</p>
+          </div>
+        </Modal>
+      )}
+      {requestOpen && (
+        <Modal
+          title="Request a new prescription"
+          onClose={() => setRequestOpen(false)}
+          footer={
+            <>
+              <SecondaryButton onClick={() => setRequestOpen(false)}>Cancel</SecondaryButton>
+              <PrimaryButton
+                disabled={!requestName.trim()}
+                onClick={() => {
+                  notify('Request for ' + requestName.trim() + ' sent to your doctor')
+                  setRequestName('')
+                  setRequestOpen(false)
+                }}
+              >
+                Send request
+              </PrimaryButton>
+            </>
+          }
+        >
+          <label className="block">
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#5C4A3E]">Medication name</span>
+            <input
+              value={requestName}
+              onChange={(e) => setRequestName(e.target.value)}
+              placeholder="For example: Ibuprofen 400mg"
+              className="mt-1 w-full px-4 py-3 rounded-xl border border-[#EDE6DE] bg-[#FDFCFA] text-sm"
+            />
+          </label>
+        </Modal>
+      )}
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -216,13 +317,12 @@ const Prescriptions_Client = () => {
           <h1 className="text-3xl font-bold tracking-tight text-[#1A0F0A]">My Prescriptions</h1>
           <p className="text-sm text-[#7A6458] mt-2">Manage your medications and refills.</p>
         </div>
-        <button
+        <button onClick={() => setRequestOpen(true)}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-xs font-semibold tracking-wide hover:opacity-90 transition-all"
           style={{ backgroundColor: TERRA }}
         >
           <Plus className="w-4 h-4" />
-          REQUEST NEW
-        </button>
+          REQUEST NEW</button>
       </div>
 
       {/* Stats */}
@@ -250,14 +350,12 @@ const Prescriptions_Client = () => {
             className="w-full pl-11 pr-4 py-3 bg-white border border-[#D6CCC2] rounded-xl text-sm text-[#1A0F0A] placeholder-[#A89080] focus:outline-none focus:border-[#A33A10]/50 transition-colors"
           />
         </div>
-        <button className="flex items-center gap-2 px-4 py-3 bg-white border border-[#D6CCC2] rounded-xl text-sm text-[#5C4A3E] hover:bg-[#F5F0EB] transition-all">
+        <button onClick={() => { const next = doctors[(doctors.indexOf(doctorFilter) + 1) % doctors.length]; setDoctorFilter(next); notify('Doctor: ' + next) }} className="flex items-center gap-2 px-4 py-3 bg-white border border-[#D6CCC2] rounded-xl text-sm text-[#5C4A3E] hover:bg-[#F5F0EB] transition-all">
           <Filter className="w-4 h-4" />
-          Filter
-        </button>
-        <button className="flex items-center gap-2 px-4 py-3 bg-white border border-[#D6CCC2] rounded-xl text-sm text-[#5C4A3E] hover:bg-[#F5F0EB] transition-all">
+          Filter</button>
+        <button onClick={() => { const next = sortMode === 'Name' ? 'Refill date' : sortMode === 'Refill date' ? 'Doctor' : 'Name'; setSortMode(next); notify('Sorted by ' + next) }} className="flex items-center gap-2 px-4 py-3 bg-white border border-[#D6CCC2] rounded-xl text-sm text-[#5C4A3E] hover:bg-[#F5F0EB] transition-all">
           <SortAsc className="w-4 h-4" />
-          Sort
-        </button>
+          Sort</button>
       </div>
 
       {/* Tabs */}
@@ -310,12 +408,11 @@ const Prescriptions_Client = () => {
               <p className="text-xs text-amber-600">Request refills to avoid running out of medication</p>
             </div>
           </div>
-          <button
+          <button onClick={refillAll}
             className="px-4 py-2 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-all"
             style={{ backgroundColor: TERRA }}
           >
-            Refill All
-          </button>
+            Refill All</button>
         </div>
       )}
 
@@ -429,20 +526,19 @@ const Prescriptions_Client = () => {
                     <td className="px-5 py-4 text-right">
                       <div className="flex items-center justify-end gap-1">
                         {rx.status === 'refill-needed' && (
-                          <button
+                          <button onClick={() => refill(rx.id)}
                             className="px-3 py-1.5 rounded-lg text-white text-[11px] font-semibold hover:opacity-90 transition-all mr-1"
                             style={{ backgroundColor: TERRA }}
                           >
-                            Refill
-                          </button>
+                            Refill</button>
                         )}
-                        <button className="p-2 rounded-lg hover:bg-[#F5F0EB] transition-colors">
+                        <button aria-label="View" onClick={() => setViewing(rx)} className="p-2 rounded-lg hover:bg-[#F5F0EB] transition-colors">
                           <Eye className="w-4 h-4 text-[#8A7568]" />
                         </button>
-                        <button className="p-2 rounded-lg hover:bg-[#F5F0EB] transition-colors">
+                        <button aria-label="Download" onClick={() => downloadRx(rx)} className="p-2 rounded-lg hover:bg-[#F5F0EB] transition-colors">
                           <Download className="w-4 h-4 text-[#8A7568]" />
                         </button>
-                        <button className="p-2 rounded-lg hover:bg-[#F5F0EB] transition-colors">
+                        <button aria-label="Message the doctor" onClick={() => navigate('/dashboard/messages')} className="p-2 rounded-lg hover:bg-[#F5F0EB] transition-colors">
                           <MoreHorizontal className="w-4 h-4 text-[#8A7568]" />
                         </button>
                       </div>

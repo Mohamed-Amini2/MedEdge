@@ -27,7 +27,7 @@ const HeroSection = ({ onGetStarted }: Props) => (
           <div className="h-px w-24" style={{ backgroundColor: TERRA }} />
         </div>
         <p className="text-lg leading-relaxed max-w-lg text-[#7A6458]">
-          MediConnect connects you with 1,200+ verified doctors in minutes — not days. Video consultations, digital prescriptions and your complete health record, all in one secure place.
+          MedEdge connects you with 1,200+ verified doctors in minutes — not days. Video consultations, digital prescriptions and your complete health record, all in one secure place.
         </p>
         <div className="flex flex-wrap items-center gap-4">
           <button

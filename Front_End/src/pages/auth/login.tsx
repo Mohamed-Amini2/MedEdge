@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { apiPost } from "@/lib/auth";
+import { useAuth } from "@/lib/AuthContext";
 
 const loginUser = (email: string, password: string) =>
   apiPost("/api/auth/login", { email, password });
@@ -15,6 +16,7 @@ const Login_Page = () => {
   const [error, setError] = useState("");
 
   const navigate = useNavigate();
+  const { setUser } = useAuth();
 
   const Handle_Login = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +28,7 @@ const Login_Page = () => {
 
       if (data.success) {
         if (data.data?.user) {
-          localStorage.setItem("user", JSON.stringify(data.data.user));
+          setUser(data.data.user);
         }
         navigate("/dashboard");
       } else if (data.code === "EMAIL_NOT_VERIFIED" && data.data?.userId) {

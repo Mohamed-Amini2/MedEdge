@@ -255,7 +255,7 @@ const Register_Page = () => {
                   }`}
                 >
                   {phone.length === 0
-                    ? "Format: +1234567890"
+                    ? "Format: +79001234567"
                     : phoneDigitsCount >= 7
                     ? "Valid"
                     : "Too short"}
@@ -267,7 +267,7 @@ const Register_Page = () => {
                 onChange={(e) => setPhone(normalizePhone(e.target.value))}
                 className="w-full bg-white border-2 border-gray-300 text-gray-800 placeholder-gray-400 outline-none rounded-lg py-3 px-4 transition-all duration-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
                 type="tel"
-                placeholder="+1234567890"
+                placeholder="+7 900 123-45-67"
                 required
                 maxLength={20}
                 autoComplete="tel"

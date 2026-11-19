@@ -1,4 +1,7 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { ToastProvider } from "./components/ui/feedback";
+import { LanguageProvider, LanguageSwitch } from "./lib/i18n";
+import { AuthProvider, GuestOnly } from "./lib/AuthContext";
 import Login_Page from "./pages/auth/login";
 import HomePage from "./pages/HomePage";
 import Complete_Profile_Page from "./pages/auth/Complete_Profile_Page";
@@ -13,6 +16,9 @@ import Prescriptions_Client from "./pages/Client_Dashboard/Prescriptions_Client"
 
 function App() {
   return (
+    <LanguageProvider>
+    <AuthProvider>
+    <ToastProvider>
     <BrowserRouter>
       <Routes>
         //* Public Routes *//
@@ -21,9 +27,9 @@ function App() {
 
         //* Authentication Routes *//
 
-        <Route path="/login" element={<Login_Page />} />
-        <Route path="/signup" element={<Register_Page />} />
-        <Route path="/verify-email" element={<Complete_Profile_Page />} />
+        <Route path="/login" element={<GuestOnly><Login_Page /></GuestOnly>} />
+        <Route path="/signup" element={<GuestOnly><Register_Page /></GuestOnly>} />
+        <Route path="/verify-email" element={<GuestOnly><Complete_Profile_Page /></GuestOnly>} />
 
         //* Client Dashboard *//
 
@@ -38,6 +44,10 @@ function App() {
         
       </Routes>
     </BrowserRouter>
+    <LanguageSwitch />
+    </ToastProvider>
+    </AuthProvider>
+    </LanguageProvider>
   );
 }
 

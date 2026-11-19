@@ -1,9 +1,12 @@
 import { Phone, Mail, Clock } from 'lucide-react';
+import { useToast } from '@/components/ui/feedback';
 
 const TERRA = '#C4521A';
 const BROWN = '#2C1810';
 
-const ContactSection = () => (
+const ContactSection = () => {
+  const notify = useToast();
+  return (
   <div className="grid lg:grid-cols-2 gap-16 p-12 lg:p-20">
     <div className="space-y-12">
       <div className="space-y-6">
@@ -42,7 +45,14 @@ const ContactSection = () => (
     </div>
 
     <div className="p-10 rounded-sm border border-[#EDE5DF] bg-[#FDFCFA]">
-      <form className="space-y-8">
+      <form
+        className="space-y-8"
+        onSubmit={(e) => {
+          e.preventDefault();
+          e.currentTarget.reset();
+          notify('Thank you! Your message was sent. We will reply within one working day.');
+        }}
+      >
         {[
           { label: 'YOUR NAME',     type: 'text',  placeholder: 'John Smith'       },
           { label: 'EMAIL ADDRESS', type: 'email', placeholder: 'john@example.com' },
@@ -81,5 +91,6 @@ const ContactSection = () => (
     </div>
   </div>
 );
+};
 
 export default ContactSection;

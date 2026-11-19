@@ -3,3 +3,6 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
 
+html.a11y-large {
+  font-size: 118%;
+}

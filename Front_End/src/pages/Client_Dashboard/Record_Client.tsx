@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Modal, PrimaryButton, SecondaryButton, downloadFile, useToast } from '@/components/ui/feedback'
 import {
   FileText, Activity, Search, Download,
   Share2, Eye, Calendar, User, X,
@@ -51,7 +52,7 @@ const STATS = [
   { label: 'This Month', value: '4', icon: Calendar, color: '#7C3AED' },
 ]
 
-const RecordCard = ({ record }: { record: Record }) => {
+const RecordCard = ({ record, onView, onDownload }: { record: Record; onView: (r: Record) => void; onDownload: (r: Record) => void }) => {
   const cfg = TYPE_CONFIG[record.type]
   const Icon = cfg.icon
 
@@ -106,10 +107,10 @@ const RecordCard = ({ record }: { record: Record }) => {
 
         {/* Action buttons */}
         <div className="flex items-center gap-1 flex-shrink-0">
-          <button className="p-2 rounded-lg hover:bg-[#F5F0EB] transition-colors">
+          <button aria-label="View" onClick={() => onView(record)} className="p-2 rounded-lg hover:bg-[#F5F0EB] transition-colors">
             <Eye className="w-4 h-4 text-[#8A7568]" />
           </button>
-          <button className="p-2 rounded-lg hover:bg-[#F5F0EB] transition-colors">
+          <button aria-label="Download" onClick={() => onDownload(record)} className="p-2 rounded-lg hover:bg-[#F5F0EB] transition-colors">
             <Download className="w-4 h-4 text-[#8A7568]" />
           </button>
         </div>
@@ -132,15 +133,100 @@ const Records_Client = () => {
   const [search, setSearch] = useState('')
   const [activeFilter, setActiveFilter] = useState('All Records')
   const [view, setView] = useState<'grid' | 'list'>('grid')
+  const notify = useToast()
+  const [viewing, setViewing] = useState<Record | null>(null)
+  const [requestOpen, setRequestOpen] = useState(false)
+  const [requestText, setRequestText] = useState('')
+  const [sortMode, setSortMode] = useState<'Newest' | 'Oldest' | 'A-Z'>('Newest')
 
-  const filtered = RECORDS.filter((r) => {
+  const recordText = (r: Record) =>
+    r.title + '\nType: ' + r.type + '\nDoctor: ' + r.doctor + ' (' + r.department + ')\nDate: ' + r.date + '\nStatus: ' + r.status + '\nSummary: ' + r.summary + '\n'
+
+  const downloadRecord = (r: Record) => {
+    downloadFile(r.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '.txt', recordText(r))
+    notify('Downloaded: ' + r.title)
+  }
+
+  const shareRecord = async (r: Record) => {
+    const link = window.location.origin + '/dashboard/records?shared=' + r.id
+    try {
+      await navigator.clipboard.writeText(link)
+      notify('Share link copied for ' + r.title)
+    } catch {
+      notify('Share link: ' + link)
+    }
+  }
+
+  const cycleSort = () => {
+    const next = sortMode === 'Newest' ? 'Oldest' : sortMode === 'Oldest' ? 'A-Z' : 'Newest'
+    setSortMode(next)
+    notify('Sorted: ' + next)
+  }
+
+  const matching = RECORDS.filter((r) => {
     const matchFilter = activeFilter === 'All Records' || r.type === activeFilter
     const matchSearch = !search || [r.title, r.doctor, r.type, ...r.tags].some((s) => s.toLowerCase().includes(search.toLowerCase()))
     return matchFilter && matchSearch
   })
 
+  const filtered = [...matching].sort((a, b) =>
+    sortMode === 'Newest' ? b.date.localeCompare(a.date) : sortMode === 'Oldest' ? a.date.localeCompare(b.date) : a.title.localeCompare(b.title),
+  )
+
   return (
     <div className="space-y-6 animate-fadeIn">
+      {viewing && (
+        <Modal
+          title={viewing.title}
+          onClose={() => setViewing(null)}
+          footer={
+            <>
+              <SecondaryButton onClick={() => shareRecord(viewing)}>Share</SecondaryButton>
+              <PrimaryButton onClick={() => downloadRecord(viewing)}>Download</PrimaryButton>
+            </>
+          }
+        >
+          <div className="space-y-2">
+            <p><span className="font-semibold text-[#1A0F0A]">Type:</span> {viewing.type}</p>
+            <p><span className="font-semibold text-[#1A0F0A]">Doctor:</span> {viewing.doctor}, {viewing.department}</p>
+            <p><span className="font-semibold text-[#1A0F0A]">Date:</span> {viewing.date}</p>
+            <p><span className="font-semibold text-[#1A0F0A]">Status:</span> {viewing.status}</p>
+            <p><span className="font-semibold text-[#1A0F0A]">Summary:</span> {viewing.summary}</p>
+          </div>
+        </Modal>
+      )}
+      {requestOpen && (
+        <Modal
+          title="Request records"
+          onClose={() => setRequestOpen(false)}
+          footer={
+            <>
+              <SecondaryButton onClick={() => setRequestOpen(false)}>Cancel</SecondaryButton>
+              <PrimaryButton
+                disabled={!requestText.trim()}
+                onClick={() => {
+                  notify('Request sent: ' + requestText.trim())
+                  setRequestText('')
+                  setRequestOpen(false)
+                }}
+              >
+                Send request
+              </PrimaryButton>
+            </>
+          }
+        >
+          <label className="block">
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#5C4A3E]">Which records do you need?</span>
+            <textarea
+              value={requestText}
+              onChange={(e) => setRequestText(e.target.value)}
+              rows={4}
+              placeholder="For example: blood test results from December"
+              className="mt-1 w-full px-4 py-3 rounded-xl border border-[#EDE6DE] bg-[#FDFCFA] text-sm"
+            />
+          </label>
+        </Modal>
+      )}
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -156,17 +242,15 @@ const Records_Client = () => {
           <p className="text-sm text-[#7A6458] mt-2">Access, download, and share your health documents securely.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-4 py-2.5 border border-[#D6CCC2] rounded-xl text-sm text-[#5C4A3E] hover:bg-[#F5F0EB] transition-all">
+          <button onClick={() => { downloadFile('medical-records.json', JSON.stringify(RECORDS, null, 2), 'application/json'); notify('Exported ' + RECORDS.length + ' records') }} className="flex items-center gap-2 px-4 py-2.5 border border-[#D6CCC2] rounded-xl text-sm text-[#5C4A3E] hover:bg-[#F5F0EB] transition-all">
             <Download className="w-4 h-4" />
-            Export All
-          </button>
-          <button
+            Export All</button>
+          <button onClick={() => setRequestOpen(true)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-all"
             style={{ backgroundColor: TERRA }}
           >
             <Plus className="w-4 h-4" />
-            Request Records
-          </button>
+            Request Records</button>
         </div>
       </div>
 
@@ -219,10 +303,9 @@ const Records_Client = () => {
           </button>
         </div>
 
-        <button className="flex items-center gap-2 px-4 py-3 bg-white border border-[#D6CCC2] rounded-xl text-sm text-[#5C4A3E] hover:bg-[#F5F0EB] transition-all">
+        <button onClick={cycleSort} className="flex items-center gap-2 px-4 py-3 bg-white border border-[#D6CCC2] rounded-xl text-sm text-[#5C4A3E] hover:bg-[#F5F0EB] transition-all">
           <SortAsc className="w-4 h-4" />
-          Sort
-        </button>
+          Sort</button>
       </div>
 
       {/* Filter Pills */}
@@ -265,7 +348,7 @@ const Records_Client = () => {
       ) : view === 'grid' ? (
         <div className="grid md:grid-cols-2 gap-4">
           {filtered.map((r) => (
-            <RecordCard key={r.id} record={r} />
+            <RecordCard key={r.id} record={r} onView={setViewing} onDownload={downloadRecord} />
           ))}
         </div>
       ) : (
@@ -332,13 +415,13 @@ const Records_Client = () => {
                     </td>
                     <td className="px-5 py-4 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <button className="p-2 rounded-lg hover:bg-[#F5F0EB] transition-colors">
+                        <button aria-label="View" onClick={() => setViewing(record)} className="p-2 rounded-lg hover:bg-[#F5F0EB] transition-colors">
                           <Eye className="w-4 h-4 text-[#8A7568]" />
                         </button>
-                        <button className="p-2 rounded-lg hover:bg-[#F5F0EB] transition-colors">
+                        <button aria-label="Download" onClick={() => downloadRecord(record)} className="p-2 rounded-lg hover:bg-[#F5F0EB] transition-colors">
                           <Download className="w-4 h-4 text-[#8A7568]" />
                         </button>
-                        <button className="p-2 rounded-lg hover:bg-[#F5F0EB] transition-colors">
+                        <button aria-label="Share" onClick={() => shareRecord(record)} className="p-2 rounded-lg hover:bg-[#F5F0EB] transition-colors">
                           <Share2 className="w-4 h-4 text-[#8A7568]" />
                         </button>
                       </div>

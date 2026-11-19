@@ -1,4 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
+import { CallModal, Modal, PrimaryButton, useToast } from '@/components/ui/feedback'
+import { useLang } from '@/lib/i18n'
+import { THREADS } from './chatData'
 import {
   Search as SearchIcon, SendHorizontal, Phone, Video,
   Paperclip, Smile, Check, CheckCheck, Info,
@@ -7,6 +10,7 @@ import {
 type Message = {
   id: number
   text: string
+  ru?: string
   sender: 'doctor' | 'patient'
   time: string
   status?: 'sent' | 'delivered' | 'read'
@@ -33,33 +37,31 @@ const conversations: Conversation[] = [
   { id: 7, name: 'Dr. Linda Garcia', specialty: 'Endocrinologist', lastMessage: 'Lab results are in', online: true, time: '4d ago' },
   { id: 8, name: 'Dr. David Lee', specialty: 'Orthopedist', lastMessage: 'Physical therapy recommended', online: false, time: '5d ago' },
    { id: 9, name: 'Dr. Maria Rodriguez', specialty: 'Gastroenterologist', lastMessage: 'Dietary changes suggested', online: true, time: '6d ago' },
-   { id: 10, name: 'Dr. James Anderson', specialty: 'Cardiologist', lastMessage: 'Take care and rest well!', online: true, unread: 2, time: '2m ago' },
-   { id: 11, name: 'Dr. Sarah Mitchell', specialty: 'General Practice', lastMessage: 'Your results look good', online: true, time: '1h ago' },
-   { id: 12, name: 'Dr. Michael Chen', specialty: 'Dermatologist', lastMessage: 'See you next week', online: false, time: '3h ago' },
-   { id: 13, name: 'Dr. Emily Brown', specialty: 'Neurologist', lastMessage: 'Prescription sent', online: false, time: '1d ago' },
-   { id: 14, name: 'Dr. Priya Patel', specialty: 'Cardiologist', lastMessage: 'Any questions?', online: true, time: '2d ago' },
 ]
 
-const initialMessages: Message[] = [
-  { id: 1, text: 'Hello, how can I help you today?', sender: 'doctor', time: '10:00 AM' },
-  { id: 2, text: 'I have a headache since yesterday', sender: 'patient', time: '10:02 AM', status: 'read' },
-  { id: 3, text: 'Have you taken any medication?', sender: 'doctor', time: '10:03 AM' },
-  { id: 4, text: "No, I haven't taken anything yet.", sender: 'patient', time: '10:05 AM', status: 'read' },
-  { id: 5, text: 'I recommend taking some pain relievers and resting. If it persists, please schedule an appointment.', sender: 'doctor', time: '10:07 AM' },
-  { id: 6, text: 'Thank you, doctor!', sender: 'patient', time: '10:08 AM', status: 'read' },
-  { id: 7, text: "You're welcome! Take care and don't hesitate to reach out if you need anything.", sender: 'doctor', time: '10:09 AM' },
-  { id: 8, text: 'Will do, thanks again!', sender: 'patient', time: '10:10 AM', status: 'read' },
-  { id: 9, text: 'Have a great day!', sender: 'doctor', time: '10:11 AM' },
-  { id: 10, text: 'You too, bye!', sender: 'patient', time: '10:12 AM', status: 'read' },
-  { id: 11, text: 'Hello, how can I assist you today?', sender: 'doctor', time: '10:00 AM' },
-  { id: 12, text: 'I have been experiencing chest pain for the past few days.', sender: 'patient', time: '10:02 AM', status: 'read' },
-  { id: 13, text: 'I see. Can you describe the pain? Is it sharp, dull, or burning?', sender: 'doctor', time: '10:03 AM' },
-  { id: 14, text: 'It is a sharp pain that comes and goes.', sender: 'patient', time: '10:05 AM', status: 'read' },
-]
+const clock = (i: number) => {
+  const minutes = 600 + i * 2
+  return Math.floor(minutes / 60) + ':' + String(minutes % 60).padStart(2, '0') + ' AM'
+}
+
+const INITIAL_THREADS: Record<number, Message[]> = Object.fromEntries(
+  Object.entries(THREADS).map(([id, lines]) => [
+    Number(id),
+    lines.map(([who, en, ru], i): Message => ({
+      id: i + 1,
+      text: en,
+      ru,
+      sender: who === 'd' ? 'doctor' : 'patient',
+      time: clock(i),
+      status: who === 'p' ? 'read' : undefined,
+    })),
+  ]),
+)
 
 const TERRA = '#A33A10'
 
-const MessageBubble = ({ msg, isLast }: { msg: Message; isLast: boolean }) => {
+const MessageBubble = ({ msg, isLast, doctor }: { msg: Message; isLast: boolean; doctor: string }) => {
+  const { lang } = useLang()
   const isPatient = msg.sender === 'patient'
 
   return (
@@ -73,7 +75,7 @@ const MessageBubble = ({ msg, isLast }: { msg: Message; isLast: boolean }) => {
         }`}
         style={{ backgroundColor: isPatient ? undefined : TERRA }}
       >
-        {isPatient ? 'ME' : 'JA'}
+        {isPatient ? 'ME' : doctor}
       </div>
       <div className="flex flex-col gap-1">
         <div
@@ -83,7 +85,7 @@ const MessageBubble = ({ msg, isLast }: { msg: Message; isLast: boolean }) => {
               : 'bg-white text-[#1A0F0A] rounded-bl-md border border-[#EDE6DE]'
           }`}
         >
-          <p className="text-sm leading-relaxed">{msg.text}</p>
+          <p className="text-sm leading-relaxed">{lang === 'ru' && msg.ru ? msg.ru : msg.text}</p>
         </div>
         <div className={`flex items-center gap-1 text-[10px] text-[#A89080] ${isPatient ? 'justify-end' : ''}`}>
           <span>{msg.time}</span>
@@ -140,12 +142,45 @@ const ConversationItem = ({ conv, active, onClick }: { conv: Conversation; activ
 )
 
 const Chat_Client = () => {
-  const [messages, setMessages] = useState<Message[]>(initialMessages)
+  const [threads, setThreads] = useState<Record<number, Message[]>>(INITIAL_THREADS)
+  const { lang } = useLang()
   const [input, setInput] = useState('')
   const [activeConv, setActiveConv] = useState(1)
+  const messages = threads[activeConv] ?? []
+  const setMessages = (update: (prev: Message[]) => Message[]) => {
+    const target = activeConv
+    setThreads((all) => ({ ...all, [target]: update(all[target] ?? []) }))
+  }
   const [searchQuery, setSearchQuery] = useState('')
-  const [isTyping, setIsTyping] = useState(false)
+  const [typingConv, setTypingConv] = useState<number | null>(null)
+  const isTyping = typingConv === activeConv
+  const setIsTyping = (on: boolean) => setTypingConv(on ? activeConv : null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const notify = useToast()
+  const [call, setCall] = useState<{ video: boolean } | null>(null)
+  const [infoOpen, setInfoOpen] = useState(false)
+
+  const attachFile = () => {
+    const picker = document.createElement('input')
+    picker.type = 'file'
+    picker.onchange = () => {
+      const file = picker.files?.[0]
+      if (!file) return
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: prev.length + 1,
+          text: 'Attached file: ' + file.name,
+          ru: 'Прикреплён файл: ' + file.name,
+          sender: 'patient',
+          time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+          status: 'sent',
+        },
+      ])
+      notify('File attached: ' + file.name)
+    }
+    picker.click()
+  }
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -175,6 +210,7 @@ const Chat_Client = () => {
         {
           id: prev.length + 1,
           text: "Thank you for your message. I'll review it and get back to you shortly.",
+          ru: 'Спасибо за сообщение. Я посмотрю и отвечу вам в ближайшее время.',
           sender: 'doctor',
           time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
         },
@@ -184,6 +220,12 @@ const Chat_Client = () => {
 
   const filteredConvs = conversations.filter((c) => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
   const activeDoctor = conversations.find((c) => c.id === activeConv)
+  const doctorInitials = (activeDoctor?.name ?? '').split(' ').slice(1).map((n) => n[0]).join('')
+  const lastText = (id: number, fallback: string) => {
+    const thread = threads[id]
+    const last = thread?.[thread.length - 1]
+    return last ? (lang === 'ru' && last.ru ? last.ru : last.text) : fallback
+  }
 
   return (
     <div className="flex h-[calc(100vh-7rem)] gap-4 animate-fadeIn">
@@ -214,7 +256,12 @@ const Chat_Client = () => {
         {/* Conversations List */}
         <div className="flex-1 overflow-y-auto">
           {filteredConvs.map((conv) => (
-            <ConversationItem key={conv.id} conv={conv} active={activeConv === conv.id} onClick={() => setActiveConv(conv.id)} />
+            <ConversationItem
+              key={conv.id}
+              conv={{ ...conv, lastMessage: lastText(conv.id, conv.lastMessage), unread: activeConv === conv.id ? undefined : conv.unread }}
+              active={activeConv === conv.id}
+              onClick={() => setActiveConv(conv.id)}
+            />
           ))}
         </div>
       </aside>
@@ -252,13 +299,13 @@ const Chat_Client = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button className="w-10 h-10 rounded-xl bg-[#F5F0EB] flex items-center justify-center text-[#5C4A3E] hover:bg-[#EDE6DE] transition-colors">
+            <button onClick={() => setCall({ video: false })} className="w-10 h-10 rounded-xl bg-[#F5F0EB] flex items-center justify-center text-[#5C4A3E] hover:bg-[#EDE6DE] transition-colors">
               <Phone className="w-5 h-5" />
             </button>
-            <button className="w-10 h-10 rounded-xl bg-[#F5F0EB] flex items-center justify-center text-[#5C4A3E] hover:bg-[#EDE6DE] transition-colors">
+            <button onClick={() => setCall({ video: true })} className="w-10 h-10 rounded-xl bg-[#F5F0EB] flex items-center justify-center text-[#5C4A3E] hover:bg-[#EDE6DE] transition-colors">
               <Video className="w-5 h-5" />
             </button>
-            <button className="w-10 h-10 rounded-xl bg-[#F5F0EB] flex items-center justify-center text-[#5C4A3E] hover:bg-[#EDE6DE] transition-colors">
+            <button onClick={() => setInfoOpen(true)} className="w-10 h-10 rounded-xl bg-[#F5F0EB] flex items-center justify-center text-[#5C4A3E] hover:bg-[#EDE6DE] transition-colors">
               <Info className="w-5 h-5" />
             </button>
           </div>
@@ -274,7 +321,7 @@ const Chat_Client = () => {
           </div>
 
           {messages.map((msg, i) => (
-            <MessageBubble key={msg.id} msg={msg} isLast={i === messages.length - 1} />
+            <MessageBubble key={msg.id} msg={msg} isLast={i === messages.length - 1} doctor={doctorInitials} />
           ))}
 
           {/* Typing Indicator */}
@@ -299,7 +346,7 @@ const Chat_Client = () => {
         {/* Input Area */}
         <div className="px-6 py-4 bg-white border-t border-[#EDE6DE]">
           <div className="flex items-center gap-3">
-            <button className="w-11 h-11 rounded-xl bg-[#F5F0EB] flex items-center justify-center text-[#5C4A3E] hover:bg-[#EDE6DE] transition-colors shrink-0">
+            <button onClick={attachFile} className="w-11 h-11 rounded-xl bg-[#F5F0EB] flex items-center justify-center text-[#5C4A3E] hover:bg-[#EDE6DE] transition-colors shrink-0">
               <Paperclip className="w-5 h-5" />
             </button>
             <div className="flex-1 relative">
@@ -311,7 +358,7 @@ const Chat_Client = () => {
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                 className="w-full px-5 py-3.5 bg-[#F5F0EB] rounded-xl text-sm text-[#1A0F0A] placeholder:text-[#A89080] outline-none focus:ring-2 focus:ring-[#A33A10]/20 transition-all pr-12"
               />
-              <button className="absolute right-4 top-1/2 -translate-y-1/2 text-[#A89080] hover:text-[#5C4A3E] transition-colors">
+              <button onClick={() => setInput((v) => v + '🙂')} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#A89080] hover:text-[#5C4A3E] transition-colors">
                 <Smile className="w-5 h-5" />
               </button>
             </div>
@@ -326,6 +373,16 @@ const Chat_Client = () => {
           </div>
         </div>
       </section>
+      {call && <CallModal doctor={activeDoctor?.name ?? 'Doctor'} withVideo={call.video} onClose={() => setCall(null)} />}
+      {infoOpen && (
+        <Modal title={activeDoctor?.name ?? 'Doctor'} onClose={() => setInfoOpen(false)} footer={<PrimaryButton onClick={() => setInfoOpen(false)}>Close</PrimaryButton>}>
+          <div className="space-y-2">
+            <p><span className="font-semibold text-[#1A0F0A]">Specialty:</span> {activeDoctor?.specialty}</p>
+            <p><span className="font-semibold text-[#1A0F0A]">Status:</span> {activeDoctor?.online ? 'Online' : 'Offline'}</p>
+            <p>Messages in this conversation are visible only to you and your doctor.</p>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
