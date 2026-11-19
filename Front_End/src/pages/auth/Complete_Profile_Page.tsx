@@ -1,41 +1,12 @@
 import logo from "../../assets/logo_hero.png";
 import { useEffect, useState } from "react";
 
-const BACKEND_URL = "http://localhost:3000";
+import { apiPost } from "@/lib/auth";
 
-const verifyEmail = async (userId: string, otp: string) => {
-  const res = await fetch(`${BACKEND_URL}/api/auth/verify-email`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ userId, otp }),
-  });
-  const text = await res.text();
-  let data: any;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    data = { success: false, error: text || `HTTP ${res.status}` };
-  }
-  return { ...data, _status: res.status };
-};
+const verifyEmail = (userId: string, otp: string) =>
+  apiPost("/api/auth/verify-email", { userId, otp });
 
-const resendOtp = async (userId: string) => {
-  const res = await fetch(`${BACKEND_URL}/api/auth/resend-otp`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ userId }),
-  });
-  const text = await res.text();
-  let data: any;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    data = { success: false, error: text || `HTTP ${res.status}` };
-  }
-  return { ...data, _status: res.status };
-};
+const resendOtp = (userId: string) => apiPost("/api/auth/resend-otp", { userId });
 
 const VerifyEmail_Page = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -43,6 +14,7 @@ const VerifyEmail_Page = () => {
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [devOtp, setDevOtp] = useState(() => localStorage.getItem("pendingDevOtp") ?? "");
   const [resendCooldown, setResendCooldown] = useState(0);
 
   useEffect(() => {
@@ -79,7 +51,8 @@ const VerifyEmail_Page = () => {
       if (data.success) {
         setSuccessMsg("Email verified successfully! Redirecting...");
         localStorage.removeItem("pendingVerificationUserId");
-        
+        localStorage.removeItem("pendingDevOtp");
+
         // Store user info if provided
         if (data.data?.user) {
           localStorage.setItem("user", JSON.stringify(data.data.user));
@@ -89,7 +62,7 @@ const VerifyEmail_Page = () => {
           window.location.href = "/dashboard";
         }, 1500);
       } else {
-        setError(data.error || data.message || "Invalid verification code");
+        setError(data.error || "Invalid verification code");
       }
     } catch {
       setError("Network error. Please try again.");
@@ -112,10 +85,17 @@ const VerifyEmail_Page = () => {
       const data = await resendOtp(userId);
 
       if (data.success) {
-        setSuccessMsg("Verification code sent! Check your email.");
+        const code = data.data?.devOtp ?? "";
+        setDevOtp(code);
+        if (code) {
+          localStorage.setItem("pendingDevOtp", code);
+        } else {
+          localStorage.removeItem("pendingDevOtp");
+        }
+        setSuccessMsg(code ? "New verification code generated." : "Verification code sent! Check your email.");
         setResendCooldown(60); // 60 second cooldown
       } else {
-        setError(data.error || data.message || "Failed to resend code");
+        setError(data.error || "Failed to resend code");
       }
     } catch {
       setError("Network error. Please try again.");
@@ -174,6 +154,20 @@ const VerifyEmail_Page = () => {
             </div>
           )}
           
+          {devOtp && (
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-center">
+              <p className="text-amber-800 text-xs mb-1">Demo mode: email delivery is off, use this code</p>
+              <button
+                type="button"
+                className="text-2xl font-bold tracking-[0.4em] text-orange-700"
+                onClick={() => setOtp(devOtp)}
+                title="Click to fill in the code"
+              >
+                {devOtp}
+              </button>
+            </div>
+          )}
+
           {/* Success Message */}
           {successMsg && (
             <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">

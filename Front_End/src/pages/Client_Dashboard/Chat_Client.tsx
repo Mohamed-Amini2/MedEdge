@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import {
-  Search as SearchIcon, SendHorizontal, Phone, Video, MoreVertical,
-  Paperclip, Smile, Check, CheckCheck, ArrowLeft, Info,
+  Search as SearchIcon, SendHorizontal, Phone, Video,
+  Paperclip, Smile, Check, CheckCheck, Info,
 } from 'lucide-react'
 
 type Message = {

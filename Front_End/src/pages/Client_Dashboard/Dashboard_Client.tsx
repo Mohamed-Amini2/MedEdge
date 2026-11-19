@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { firstName, getStoredUser } from '@/lib/auth'
 import {
   Calendar, FileText, MessageSquare, RefreshCw, Heart, Activity,
   Droplet, Wind, TrendingUp, TrendingDown, Minus, ChevronRight,
-  Clock, User, Pill, Bell, Plus, Eye,
+  Clock, Pill, Bell, Plus, Eye,
 } from 'lucide-react'
 
 const TERRA = '#A33A10'
@@ -115,7 +115,7 @@ const Dashboard_Client = () => {
           <h1 className="text-3xl font-bold tracking-tight text-[#1A0F0A]">
             Welcome back,{' '}
             <span className="relative inline-block" style={{ color: TERRA }}>
-              Mohamed
+              {firstName(getStoredUser(), 'Mohamed')}
               <span
                 className="absolute -bottom-0.5 left-0 w-full h-0.5 rounded-full opacity-40"
                 style={{ backgroundColor: TERRA }}

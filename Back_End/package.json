@@ -47,7 +47,10 @@
     "build": "npx tsc",
     "dev:watch": "nodemon dist/server.js",
     "db:generate": "npx drizzle-kit generate",
-    "db:migrate": "npx tsx src/drizzle/migrate.ts"
+    "db:migrate": "npx tsx src/drizzle/migrate.ts",
+    "start": "bun src/server.ts",
+    "db:seed": "bun src/drizzle/seed.ts",
+    "db:migrate:bun": "bun src/drizzle/migrate.ts"
   },
   "keywords": [],
   "author": "",

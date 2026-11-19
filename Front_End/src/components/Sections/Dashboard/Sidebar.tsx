@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom'
-import { LayoutDashboard, CalendarDays, FileText, MessageSquare, Pill, Settings } from "lucide-react"
+import { LayoutDashboard, CalendarDays, FileText, MessageSquare, Pill, Settings, LogOut } from "lucide-react"
 import logo from '../../../assets/image-logo.png'
+import { getStoredUser, logoutRequest } from '@/lib/auth'
 
 const TERRA = '#A33A10'
 
@@ -40,6 +41,7 @@ const NAV_ITEMS = [
 const Sidebar = () => {
   const navigate  = useNavigate()
   const location  = useLocation()
+  const currentUser = getStoredUser()
 
   const isActive = (path: string) =>
     path === '/dashboard'
@@ -93,9 +95,21 @@ const Sidebar = () => {
             </svg>
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-semibold text-[#1A0F0A] truncate">Mohamed Amini</div>
-            <div className="text-xs text-[#8A7568] truncate">Mohamedamini740@gmail.com</div>
+            <div className="text-sm font-semibold text-[#1A0F0A] truncate">{currentUser?.name ?? 'Mohamed Amini'}</div>
+            <div className="text-xs text-[#8A7568] truncate">{currentUser?.email ?? 'Mohamedamini740@gmail.com'}</div>
           </div>
+          <button
+            type="button"
+            aria-label="Log out"
+            title="Log out"
+            className="ml-auto p-2 rounded-lg text-[#8A7568] hover:bg-[#F0E6DD] hover:text-[#1A0F0A] transition-colors"
+            onClick={async () => {
+              await logoutRequest()
+              navigate('/login')
+            }}
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
 

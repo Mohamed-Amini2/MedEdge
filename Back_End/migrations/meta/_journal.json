@@ -36,6 +36,13 @@
       "when": 1768943063895,
       "tag": "0004_crazy_starfox",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790000000000,
+      "tag": "0005_verification_codes",
+      "breakpoints": true
     }
   ]
 }

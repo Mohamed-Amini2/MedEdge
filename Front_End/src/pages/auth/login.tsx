@@ -2,24 +2,10 @@ import logo from "../../assets/logo_hero.png";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const BACKEND_URL = "http://localhost:3000";
+import { apiPost } from "@/lib/auth";
 
-const loginUser = async (email: string, password: string) => {
-  const res = await fetch(`${BACKEND_URL}/api/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ email, password }),
-  });
-  const text = await res.text();
-  let data: any;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    data = { success: false, error: text || `HTTP ${res.status}` };
-  }
-  return { ...data, _status: res.status };
-};
+const loginUser = (email: string, password: string) =>
+  apiPost("/api/auth/login", { email, password });
 
 const Login_Page = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -43,12 +29,18 @@ const Login_Page = () => {
           localStorage.setItem("user", JSON.stringify(data.data.user));
         }
         navigate("/dashboard");
-      } else {
-        if (data._status === 401) {
-          setError("Invalid email or password");
+      } else if (data.code === "EMAIL_NOT_VERIFIED" && data.data?.userId) {
+        localStorage.setItem("pendingVerificationUserId", data.data.userId);
+        if (data.data.devOtp) {
+          localStorage.setItem("pendingDevOtp", data.data.devOtp);
         } else {
-          setError("Something went wrong. Please try again.");
+          localStorage.removeItem("pendingDevOtp");
         }
+        navigate("/verify-email");
+      } else if (data._status === 401) {
+        setError("Invalid email or password");
+      } else {
+        setError(data.error || "Something went wrong. Please try again.");
       }
     } catch {
       setError("Network error. Please try again.");

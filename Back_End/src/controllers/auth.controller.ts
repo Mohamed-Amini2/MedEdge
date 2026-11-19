@@ -1,12 +1,12 @@
-
-// src/controllers/auth.controller.ts
 import { Request, Response, NextFunction } from "express";
 import { authService } from "../services/Security/Auth_Registration_Service.js";
+import { HttpError } from "../utils/http_Error.js";
 import { z } from "zod";
 
-// Validation schemas
+const emailField = z.string().trim().toLowerCase().email("Invalid email address");
+
 const registerSchema = z.object({
-  email: z.string().email("Invalid email address"),
+  email: emailField,
   password: z
     .string()
     .min(8, "Password must be at least 8 characters")
@@ -22,7 +22,7 @@ const registerSchema = z.object({
 });
 
 const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
+  email: emailField,
   password: z.string().min(1, "Password is required"),
 });
 
@@ -35,17 +35,15 @@ const resendOtpSchema = z.object({
   userId: z.string().uuid("Invalid user ID"),
 });
 
+const saveSession = (req: Request) =>
+  new Promise<void>((resolve, reject) => req.session.save((err) => (err ? reject(err) : resolve())));
+
 export class AuthController {
   async register(req: Request, res: Response, next: NextFunction) {
     try {
       const validatedData = registerSchema.parse(req.body);
-
       const result = await authService.register(validatedData);
-
-      res.status(201).json({
-        success: true,
-        data: result,
-      });
+      res.status(201).json({ success: true, data: result });
     } catch (error) {
       next(error);
     }
@@ -54,36 +52,26 @@ export class AuthController {
   async login(req: Request, res: Response, next: NextFunction) {
     try {
       const validatedData = loginSchema.parse(req.body);
-
       const result = await authService.login(validatedData);
 
-      // TODO: Set JWT token in httpOnly cookie
-      // res.cookie('token', result.token, {
-      //   httpOnly: true,
-      //   secure: process.env.NODE_ENV === 'production',
-      //   sameSite: 'strict',
-      //   maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-      // });
+      req.session.userId = result.user.id;
+      await saveSession(req);
 
-      res.status(200).json({
-        success: true,
-        data: result,
-      });
+      res.status(200).json({ success: true, data: result });
     } catch (error) {
-      return res.status(401).json({Message: "Invalid email or password"});
+      next(error);
     }
   }
 
   async verifyEmail(req: Request, res: Response, next: NextFunction) {
     try {
       const validatedData = verifyEmailSchema.parse(req.body);
-
       const result = await authService.verifyEmail(validatedData);
 
-      res.status(200).json({
-        success: true,
-        data: result,
-      });
+      req.session.userId = result.user.id;
+      await saveSession(req);
+
+      res.status(200).json({ success: true, data: result });
     } catch (error) {
       next(error);
     }
@@ -92,13 +80,20 @@ export class AuthController {
   async resendVerificationOtp(req: Request, res: Response, next: NextFunction) {
     try {
       const validatedData = resendOtpSchema.parse(req.body);
-
       const result = await authService.resendVerificationOtp(validatedData.userId);
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
 
-      res.status(200).json({
-        success: true,
-        data: result,
-      });
+  async me(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.session.userId) {
+        throw new HttpError(401, "Not authenticated");
+      }
+      const result = await authService.getUserProfile(req.session.userId);
+      res.status(200).json({ success: true, data: { user: result } });
     } catch (error) {
       next(error);
     }
@@ -106,39 +101,25 @@ export class AuthController {
 
   async getProfile(req: Request, res: Response, next: NextFunction) {
     try {
-      // TODO: Get user ID from authenticated session/JWT
-      const userId = req.params.userId;
-
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          error: "Unauthorized",
-        });
+      if (!req.session.userId) {
+        throw new HttpError(401, "Not authenticated");
       }
-
-      const result = await authService.getUserProfile(userId);
-
-      res.status(200).json({
-        success: true,
-        data: result,
-      });
+      if (req.session.userId !== req.params.userId) {
+        throw new HttpError(403, "Forbidden");
+      }
+      const result = await authService.getUserProfile(req.params.userId);
+      res.status(200).json({ success: true, data: result });
     } catch (error) {
       next(error);
     }
   }
 
   async logout(req: Request, res: Response, next: NextFunction) {
-    try {
-      // TODO: Clear JWT cookie and invalidate session
-      // res.clearCookie('token');
-
-      res.status(200).json({
-        success: true,
-        message: "Logged out successfully",
-      });
-    } catch (error) {
-      next(error);
-    }
+    req.session.destroy((err) => {
+      if (err) return next(err);
+      res.clearCookie("sid", { path: "/" });
+      res.status(200).json({ success: true, message: "Logged out successfully" });
+    });
   }
 }
 

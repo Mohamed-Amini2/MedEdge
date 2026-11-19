@@ -1,20 +1,7 @@
 import logo from "../../assets/logo_hero.png";
 import { useMemo, useState } from "react";
 
-const BACKEND_URL = "http://localhost:3000";
-
-type ApiResult = { success: boolean; error?: string; data?: any; [k: string]: any };
-
-const safeJson = async (res: Response): Promise<ApiResult & { _status: number }> => {
-  const text = await res.text();
-  let data: any;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    data = { success: false, error: text || `HTTP ${res.status}` };
-  }
-  return { ...data, _status: res.status };
-};
+import { apiPost } from "@/lib/auth";
 
 interface RegisterParams {
   name: string;
@@ -25,15 +12,7 @@ interface RegisterParams {
   picture?: string;
 }
 
-const registerUser = async (payload: RegisterParams) => {
-  const res = await fetch(`${BACKEND_URL}/api/auth/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify(payload),
-  });
-  return safeJson(res);
-};
+const registerUser = (payload: RegisterParams) => apiPost("/api/auth/register", payload);
 
 const Register_Page = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -132,6 +111,11 @@ const Register_Page = () => {
         // Store user ID for verification
         if (data.data?.user?.id) {
           localStorage.setItem("pendingVerificationUserId", data.data.user.id);
+        }
+        if (data.data?.devOtp) {
+          localStorage.setItem("pendingDevOtp", data.data.devOtp);
+        } else {
+          localStorage.removeItem("pendingDevOtp");
         }
         
         // Redirect to email verification page or dashboard
